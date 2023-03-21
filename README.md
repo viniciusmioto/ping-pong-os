@@ -1,2 +1,1 @@
-# sos
-Studying Operating Systems (SOS)
+# Studying Operating Systems (SOS)
