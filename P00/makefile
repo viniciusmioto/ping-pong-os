@@ -17,4 +17,4 @@ clean:
 	-rm -f *.o
 
 purge: clean
-	-rm -f testafila
+	-rm -f testa
