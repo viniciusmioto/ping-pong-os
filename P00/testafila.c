@@ -15,7 +15,7 @@
 #include <assert.h>
 #include "queue.h"
 
-#define N 100
+#define N 8
 
 // A estrutura "filaint_t" será usada com as funções de queue.c usando um
 // casting para o tipo "queue_t". Isso funciona bem, se os campos iniciais
@@ -116,13 +116,18 @@ int main(int argc, char **argv, char **envp)
    }
 
    // PARTE 1: queue_append e queue_size =======================================
-   fila0 = NULL;
 
-   queue_append((queue_t **)&fila0, (queue_t *)&item[0]);
-   queue_print("fila0", (queue_t *)fila0, print_elem);
+   // Teste: inserir N elemementos na fila e verificar a estrutura
+   printf ("Testando insercao de %d elementos...\n", N) ;
+   fila0 = NULL ;
+   for (i=0; i<N; i++)
+   {
+      // assert (queue_size ((queue_t*) fila0) == i) ;
+      queue_append ((queue_t **) &fila0, (queue_t*) &item[i]) ;
+      assert (fila_correta (fila0)) ;
+   }
 
-   queue_append((queue_t **)&fila0, (queue_t *)&item[1]);
-   queue_print("fila0", (queue_t *)fila0, print_elem);
+   queue_print("fila0", (queue_t*) fila0, print_elem);
 
    exit(0);
 }
