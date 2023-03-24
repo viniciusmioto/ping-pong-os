@@ -164,7 +164,7 @@ int queue_remove(queue_t **queue, queue_t *elem)
     // the element must be in the given queue
     if (search_element(*queue, elem))
     {
-        printf("### ERROR - queue_remove: element is not in the queue \n");
+        printf("### ERROR - queue_remove: element is not in the given queue \n");
         return -4;
     }
 
@@ -199,14 +199,12 @@ int queue_remove(queue_t **queue, queue_t *elem)
         // element is in the middle
         else
         {
-            printf("middle\n");
-            // queue_t *aux = elem;
             (elem->prev)->next = elem->next;
             (elem->next)->prev = elem->prev;
         }
 
-        // elem->next = NULL;
-        // elem->prev = NULL;
+        elem->next = NULL;
+        elem->prev = NULL;
     }
 
     return 0;
