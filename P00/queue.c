@@ -6,7 +6,22 @@
 // Retorno: numero de elementos na fila
 int queue_size(queue_t *queue)
 {
-    return 0;
+    int size = 0;
+
+    // check if the queue exists or is not empty
+    if (queue != NULL)
+    {
+        queue_t *aux = queue;
+        size = 1;
+        // loop through the queue until the last element
+        while (aux->next != queue)
+        {
+            size++;
+            aux = aux->next;
+        }
+    }
+
+    return size;
 }
 
 // Percorre a fila e imprime na tela seu conteúdo. A impressão de cada
@@ -36,7 +51,7 @@ void queue_print(char *name, queue_t *queue, void print_elem(void *))
     }
 
     // print the last element
-    print_elem(aux); 
+    print_elem(aux);
 
     printf("]\n");
 }
@@ -51,15 +66,23 @@ int queue_append(queue_t **queue, queue_t *elem)
 {
     // the queue must exist
     if (queue == NULL)
+    {
+        printf("### ERROR - queue_append: queue does not exist \n");
         return -1;
+    }
 
     // the element must exist
     if (elem == NULL)
+    {
+        printf("### ERROR - queue_append: element does not exist \n");
         return -2;
-
+    }
     // the element must not be in another queue
     if (elem->next != NULL || elem->prev != NULL)
+    {
+        printf("### ERROR - queue_append: element is already in a queue \n");
         return -3;
+    }
 
     // if the queue is empty, the element will be the first and last
     if (*queue == NULL)
@@ -80,6 +103,30 @@ int queue_append(queue_t **queue, queue_t *elem)
     return 0;
 }
 
+int search_element(queue_t *queue, queue_t *elem)
+{
+    // check if the queue exists or is not empty
+    if (queue != NULL)
+    {
+        // check the wanted element once for a unit queue (1 element)
+        if ((queue->next == elem->next) && (queue->prev == elem->prev))
+            return 0;
+
+        queue_t *aux = queue;
+
+        // loop through the queue until we find the wanted element
+        while (aux->next != queue)
+        {
+            if ((aux->next == elem->next) && (aux->prev == elem->prev))
+                return 0;
+
+            aux = aux->next;
+        }
+    }
+
+    return 1;
+}
+
 // Remove o elemento indicado da fila, sem o destruir.
 // Condicoes a verificar, gerando msgs de erro:
 // - a fila deve existir
@@ -89,5 +136,41 @@ int queue_append(queue_t **queue, queue_t *elem)
 // Retorno: 0 se sucesso, <0 se ocorreu algum erro
 int queue_remove(queue_t **queue, queue_t *elem)
 {
+    // the queue must exist
+    if (queue == NULL)
+    {
+        printf("### ERROR - queue_remove: queue does not exist \n");
+        return -1;
+    }
+
+    // the queue must not be empty
+    if (*queue == NULL && queue_size(*queue) == 0)
+    {
+        printf("### ERROR - queue_remove: queue is empty \n");
+        return -2;
+    }
+
+    // the element must exist
+    if (elem == NULL)
+    {
+        printf("### ERROR - queue_remove: element does not exist \n");
+        return -3;
+    }
+
+    // the element must be in the given queue
+    if (search_element(*queue, elem))
+    {
+        printf("### ERROR - queue_remove: element is not in the queue \n");
+        return -4;
+    }
+
+    // if it is a unit queue
+    if (queue_size(*queue) == 1)
+    {
+        (*queue)->prev = NULL;
+        (*queue)->next = NULL;
+        *queue = NULL;
+    }
+
     return 0;
 }
