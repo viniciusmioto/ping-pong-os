@@ -170,6 +170,21 @@ int queue_remove(queue_t **queue, queue_t *elem)
         (*queue)->prev = NULL;
         (*queue)->next = NULL;
         *queue = NULL;
+        return 0;
+    }
+
+    // if the queue has more than one element
+    if (queue_size(*queue) > 1)
+    {
+        // if the element is the first
+        if (elem == *queue)
+        {
+            queue_t *aux = *queue;
+            (*queue)->next->prev = (*queue)->prev;
+            (*queue)->prev->next = (*queue)->next;
+            *queue = aux->next;
+        }
+        
     }
 
     return 0;

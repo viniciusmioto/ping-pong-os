@@ -15,7 +15,7 @@
 #include <assert.h>
 #include "queue.h"
 
-#define N 1
+#define N 6
 
 // A estrutura "filaint_t" será usada com as funções de queue.c usando um
 // casting para o tipo "queue_t". Isso funciona bem, se os campos iniciais
