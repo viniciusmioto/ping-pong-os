@@ -182,18 +182,16 @@ int queue_remove(queue_t **queue, queue_t *elem)
         // if the element is the first
         if (elem == *queue)
         {
-            queue_t *aux = *queue;
             (*queue)->next->prev = (*queue)->prev;
             (*queue)->prev->next = (*queue)->next;
-            *queue = aux->next;
+            *queue = (*queue)->next;
         }
 
-        // if the element is the last
+        // if the element is the last | (*queue)->prev is the last
         else if (elem == (*queue)->prev)
         {
-            queue_t *last = (*queue)->prev;
-            (last->prev)->next = *queue;
-            (*queue)->prev = last->prev;
+            (((*queue)->prev)->prev)->next = *queue;
+            (*queue)->prev = ((*queue)->prev)->prev;
         }
 
         // element is in the middle
