@@ -126,7 +126,6 @@ int search_element(queue_t *queue, queue_t *elem)
         // check if it is the last element
         if ((aux->next == elem->next) && (aux->prev == elem->prev))
             return 0;
-
     }
 
     return 1;
@@ -192,21 +191,23 @@ int queue_remove(queue_t **queue, queue_t *elem)
         // if the element is the last
         else if (elem == (*queue)->prev)
         {
-            queue_t *last = (*queue)->prev;   
+            queue_t *last = (*queue)->prev;
             (last->prev)->next = *queue;
             (*queue)->prev = last->prev;
         }
 
         // element is in the middle
-        else 
+        else
         {
-            printf("middle\n\n");
+            printf("middle\n");
+            // queue_t *aux = elem;
+            (elem->prev)->next = elem->next;
+            (elem->next)->prev = elem->prev;
         }
 
+        // elem->next = NULL;
+        // elem->prev = NULL;
     }
-
-    // elem->next = NULL;
-    // elem->prev = NULL;
 
     return 0;
 }

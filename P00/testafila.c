@@ -130,6 +130,12 @@ int main(int argc, char **argv, char **envp)
    queue_print("fila0", (queue_t *)fila0, print_elem);
    printf("size: %d\n", queue_size((queue_t *)fila0));
 
+   printf("Remove um elemento do MEIO da fila...\n");
+   queue_remove((queue_t **)&fila0, (queue_t *)&item[3]);
+
+   queue_print("fila0", (queue_t *)fila0, print_elem);
+   printf("size: %d\n", queue_size((queue_t *)fila0));
+
    printf("Remove o ÚLTIMO elemento da fila...\n");
    queue_remove((queue_t **)&fila0, (queue_t *)&item[5]);
 
@@ -141,7 +147,6 @@ int main(int argc, char **argv, char **envp)
 
    queue_print("fila0", (queue_t *)fila0, print_elem);
    printf("size: %d\n", queue_size((queue_t *)fila0));
-
 
    exit(0);
 }
