@@ -2,10 +2,10 @@ CFLAGS = -Wall
 OBJECTS = testafila.o queue.o
 CC = gcc
 
-all: testa
+all: testa.e
 
-testa: $(OBJECTS)
-	$(CC) -o testa $(OBJECTS)
+testa.e: $(OBJECTS)
+	$(CC) -o testa.e $(OBJECTS)
 
 testafila.o: testafila.c
 	$(CC) $(CFLAGS) -c testafila.c

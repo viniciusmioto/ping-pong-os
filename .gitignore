@@ -56,3 +56,4 @@ socm-livro.pdf
 
 # Tests
 test/
+*.e
