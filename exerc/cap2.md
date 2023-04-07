@@ -74,3 +74,13 @@ As operações (a), (b), (d) e (e) devem ser realizadas através de chamadas de 
 A sequência correta é: (h), (c), (d), (g), (a), (i), (j), (b).
 
 As ações (e) e (f) não fazem parte da sequência.
+
+# Atividades 
+
+## 1- O utilitário strace do UNIX permite observar a sequência de chamadas de sistema efetuadas por uma aplicação. Em um terminal, execute strace date para descobrir quais os arquivos abertos pela execução do utilitário date (que indica a data e hora correntes). Por que o utilitário date precisa fazer chamadas de sistema?
+
+O utilitário date precisa fazer chamadas de sistema para obter informações de tempo e data do sistema operacional em que está sendo executado. O strace é útil para entender como os programas interagem com o sistema operacional e pode ajudar os desenvolvedores a depurar problemas e otimizar o desempenho do programa.
+
+## 2 - O utilitário ltrace do UNIX permite observar a sequência de chamadas de biblioteca efetuadas por uma aplicação. Em um terminal, execute ltrace date para descobrir as funções de biblioteca chamadas pela execução do utilitário date (que indica a data e hora correntes). Pode ser observada alguma relação entre as chamadas de biblioteca e as chamadas de sistema observadas no item anterior?
+
+Sim, as chamadas de biblioteca e as chamadas de sistema estão relacionadas, uma vez que as chamadas de biblioteca frequentemente envolvem o uso de chamadas de sistema para realizar suas tarefas. O uso do ltrace pode ajudar a identificar as funções específicas da biblioteca que um programa está usando e pode ajudar a entender melhor como o programa funciona e identificar problemas ou ineficiências em seu uso da biblioteca
