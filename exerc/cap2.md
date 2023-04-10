@@ -1,6 +1,6 @@
 # Exercícios Capítulo 2
 
-## 1- O que diferencia o núcleo do restante do sistema operacional?
+## 1 - O que diferencia o núcleo do restante do sistema operacional?
 
 Um S.O. é composto por diversos componentes, como **núcleo**, **código de inicialização**, **drivers** e **programas utilitários**. O núcleo (*kernel*) é o coração do sistema operacional, responsável pela gerência dos recursos do hardware usados pelas aplicações. Também implementa as principais abstrações utilizadas pelos aplicativos e programas utilitários.
 
@@ -77,7 +77,7 @@ As ações (e) e (f) não fazem parte da sequência.
 
 # Atividades 
 
-## 1- O utilitário strace do UNIX permite observar a sequência de chamadas de sistema efetuadas por uma aplicação. Em um terminal, execute strace date para descobrir quais os arquivos abertos pela execução do utilitário date (que indica a data e hora correntes). Por que o utilitário date precisa fazer chamadas de sistema?
+## 1 - O utilitário strace do UNIX permite observar a sequência de chamadas de sistema efetuadas por uma aplicação. Em um terminal, execute strace date para descobrir quais os arquivos abertos pela execução do utilitário date (que indica a data e hora correntes). Por que o utilitário date precisa fazer chamadas de sistema?
 
 O utilitário date precisa fazer chamadas de sistema para obter informações de tempo e data do sistema operacional em que está sendo executado. O strace é útil para entender como os programas interagem com o sistema operacional e pode ajudar os desenvolvedores a depurar problemas e otimizar o desempenho do programa.
 

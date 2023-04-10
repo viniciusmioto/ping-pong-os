@@ -1,6 +1,6 @@
 # Exercícios Capítulo 1
 
-## 1- Quais os dois principais objetivos de um sistema operacional?
+## 1 - Quais os dois principais objetivos de um sistema operacional?
 
 Oferecer aos programas aplicativos uma forma de acesso homogênea aos dispositivos físicos, que permita abstrair sua complexidade e as diferenças tecnológicas entre eles.
 
@@ -15,7 +15,7 @@ Cabe ao sistema operacional definir políticas para gerenciar o uso dos recursos
 
 Assim, um sistema operacional visa **abstrair** o acesso e **gerenciar** os recursos de hardware, provendo aos aplicativos um ambiente de execução abstrato, no qual o acesso aos recursos se faz através de interfaces simples, independentes das características e detalhes de baixo nível, e no qual os conflitos no uso do hardware são minimizados.
 
-## 2- Por que a abstração de recursos é importante para os desenvolvedores de aplicações? Ela tem alguma utilidade para os desenvolvedores do próprio sistema operacional?
+## 2 - Por que a abstração de recursos é importante para os desenvolvedores de aplicações? Ela tem alguma utilidade para os desenvolvedores do próprio sistema operacional?
 
 ### Desenvolvedores de Apps
 
@@ -27,7 +27,7 @@ Para os desenvolvedores do S.O. a vantagem é a padronização na forma de acess
 
 Além disso, a abstração permite que os desenvolvedores do S.O. criem camadas abstratas sobre o hardware subjacente para facilitar o desenvolvimento de drivers e outras partes do sistema operacional. Por exemplo, um driver de dispositivo pode usar uma API abstrata para interagir com um dispositivo de entrada, em vez de ter que lidar diretamente com a eletrônica do dispositivo e todos os detalhes técnicos de baixo nível. Isso torna o desenvolvimento do sistema operacional mais modular e facilita a manutenção e a atualização do sistema como um todo.
 
-## 3- A gerência de tarefas permite compartilhar o processador, executando mais de uma aplicação ao mesmo tempo. Identifique as principais vantagens trazidas por essa funcionalidade e os desafios a resolver para implementá-la.
+## 3 - A gerência de tarefas permite compartilhar o processador, executando mais de uma aplicação ao mesmo tempo. Identifique as principais vantagens trazidas por essa funcionalidade e os desafios a resolver para implementá-la.
 
 ### Vantagens
 
@@ -49,7 +49,7 @@ Além disso, a abstração permite que os desenvolvedores do S.O. criem camadas 
 
 * Sincronização: A execução simultânea de várias tarefas pode levar a problemas de sincronização, onde duas ou mais tarefas tentam acessar o mesmo recurso ao mesmo tempo. O sistema operacional deve fornecer mecanismos para sincronizar o acesso a recursos compartilhados.
 
-## 4- O que caracteriza um sistema operacional de tempo real? Quais as duas classificações de sistemas operacionais de tempo real e suas diferenças?
+## 4 - O que caracteriza um sistema operacional de tempo real? Quais as duas classificações de sistemas operacionais de tempo real e suas diferenças?
 
 são sistemas nos quais o tempo é essencial. Um sistema operacional de tempo real não precisa ser necessariamente ultrarrápido; sua característica essencial é ter um comportamento temporal **previsível**, ou seja, seu tempo de resposta deve ser previsível no melhor e no pior caso de operação.
 
@@ -57,7 +57,7 @@ são sistemas nos quais o tempo é essencial. Um sistema operacional de tempo re
 
 * `NÃO CRÍTICOS`: (*soft real-time systems*) a perda de um prazo é perceptível e degrada o serviço prestado, sem maiores consequências. Exemplos desse tipo de sistema são os softwares de reprodução de mídia: em caso de atrasos, podem ocorrer falhas na música que está sendo tocada.
 
-## 5- Relacione as afirmações aos respectivos tipos de sistemas operacionais: distribuído (`D`), multi-usuário (`M`), desktop (`K`), servidor (`S`), embarcado (`E`) ou de tempo-real (`T`):
+## 5 - Relacione as afirmações aos respectivos tipos de sistemas operacionais: distribuído (`D`), multi-usuário (`M`), desktop (`K`), servidor (`S`), embarcado (`E`) ou de tempo-real (`T`):
 
 (`T`) Deve ter um comportamento temporal previsível, com prazos de resposta claramente definidos.
 
@@ -79,7 +79,7 @@ são sistemas nos quais o tempo é essencial. Um sistema operacional de tempo re
 
 (`E`) São sistemas operacionais compactos, construídos para executar aplicações específicas sobre plataformas com poucos recursos.
 
-## 6- Sobre as afirmações a seguir, relativas aos diversos tipos de sistemas operacionais, indique quais são incorretas, justificando sua resposta:
+## 6 - Sobre as afirmações a seguir, relativas aos diversos tipos de sistemas operacionais, indique quais são incorretas, justificando sua resposta:
 
 (`V`) Em um sistema operacional de tempo real, a rapidez de resposta é menos importante que a previsibilidade do tempo de resposta.
 
