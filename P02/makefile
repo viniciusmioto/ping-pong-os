@@ -1,31 +1,55 @@
 CFLAGS = -Wall -std=c99
-OBJECTS = ppos_core.o
-TEST1 = pingpong-tasks1.o 
-TEST2 = pingpong-tasks2.o
-TEST3 = pingpong-tasks3.o
-TESTS = ppos_core.o $(TEST1) $(TEST2) $(TEST3)
-CC = gcc
 DEBUG = -DDEBUG -g
+OBJECTS = pingpong-tasks1.o pingpong-tasks2.o pingpong-tasks3.o
 
-all: testa.e
 
-testa.e: $(TESTS)
-	$(CC) $(CFLAGS) -o testa.e $(TESTS)
+all: ppos_core.o $(OBJECTS)
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks1.o -o teste1
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks2.o -o teste2
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks3.o -o teste3
 
-pingpong-tasks1.o: pingpong-tasks1.c
-	$(CC) $(CFLAGS) -c pingpong-tasks1.c
 
-pingpong-tasks2.o: pingpong-tasks2.c
-	$(CC) $(CFLAGS) -c pingpong-tasks2.c
+debug: ppos_core_debug.o $(OBJECTS)
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks1.o -o teste1
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks2.o -o teste2
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks3.o -o teste3
 
-pingpong-tasks3.o: pingpong-tasks3.c
-	$(CC) $(CFLAGS) -c pingpong-tasks3.c
 
-debug: $(OBJECTS)
-	$(CC) -o testa.e $(OBJECTS) $(DEBUG)
+ppos_core.o: ppos_core.c ppos.h ppos_data.h
+	gcc $(CFLAGS) -c ppos_core.c
+
+
+ppos_core_debug.o: ppos_core.c ppos.h ppos_data.h
+	gcc $(CFLAGS) $(DEBUG) -c ppos_core.c
+
+
+pingpong-tasks1.o: pingpong-tasks1.c 
+	gcc $(CFLAGS) -c pingpong-tasks1.c
+
+
+pingpong-tasks2.o: pingpong-tasks2.c 
+	gcc $(CFLAGS) -c pingpong-tasks2.c
+
+
+pingpong-tasks3.o: pingpong-tasks3.c 
+	gcc $(CFLAGS) -c pingpong-tasks3.c
+
+
+diff1:
+	diff out1.txt saida1.txt
+
+
+diff2:
+	diff out2.txt saida2.txt
+
+
+diff3:
+	diff out3.txt saida3.txt
+
 
 clean:
-	-rm -f *.o
+	rm -rf *.o
+
 
 purge: clean
-	-rm -f testa
+	rm -rf teste*
