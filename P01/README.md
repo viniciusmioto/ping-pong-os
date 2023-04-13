@@ -28,7 +28,7 @@ typedef struct ucontext_t {
 
 * `void makecontext(ucontext_t *ucp, void (*func)(), int argc, ...)`: 
     * `parâmetro`: endereço de uma variável do tipo **ucontext_t**
-    * `ação`: ajusta alguns valores internos  do contexto salvo em **ucp**, como por exemplo setar uma funcao que deve ser executada nele.
+    * `ação`: ajusta alguns valores internos do contexto salvo em **ucp**, como por exemplo setar uma funcao que deve ser executada nele.
 
 
 

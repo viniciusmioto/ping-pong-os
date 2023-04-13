@@ -4,15 +4,15 @@ OBJECTS = pingpong-tasks1.o pingpong-tasks2.o pingpong-tasks3.o
 
 
 all: ppos_core.o $(OBJECTS)
-	gcc -Wall -Wextra ppos_core.o pingpong-tasks1.o -o teste1
-	gcc -Wall -Wextra ppos_core.o pingpong-tasks2.o -o teste2
-	gcc -Wall -Wextra ppos_core.o pingpong-tasks3.o -o teste3
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks1.o -o teste1.e
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks2.o -o teste2.e
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks3.o -o teste3.e
 
 
 debug: ppos_core_debug.o $(OBJECTS)
-	gcc -Wall -Wextra ppos_core.o pingpong-tasks1.o -o teste1
-	gcc -Wall -Wextra ppos_core.o pingpong-tasks2.o -o teste2
-	gcc -Wall -Wextra ppos_core.o pingpong-tasks3.o -o teste3
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks1.o -o teste1.e
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks2.o -o teste2.e
+	gcc -Wall -Wextra ppos_core.o pingpong-tasks3.o -o teste3.e
 
 
 ppos_core.o: ppos_core.c ppos.h ppos_data.h
