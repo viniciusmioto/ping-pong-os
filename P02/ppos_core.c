@@ -1,9 +1,15 @@
+// Vinicius Mioto - GRR20203931 (BCC)
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "ppos.h"// estruturas de dados necessárias
 
+#define STACKSIZE 64*1024
+
 task_t *current_task; // ponteiro para a tarefa atual
 task_t main_task; // tarefa main
+
+int t_id = 0;
 
 /*!
     \brief Inicializa o sistema operacional; 
@@ -14,9 +20,11 @@ void ppos_init () {
     setvbuf(stdout, 0, _IONBF, 0);
 
     // cria a tarefa main
+    main_task.id = t_id;
     main_task.prev = NULL;
     main_task.next = NULL;
-    main_task.id = 0;
+
+    current_task = &main_task;
 }
 
 // gerência de tarefas =========================================================
@@ -27,9 +35,35 @@ void ppos_init () {
     \param start_func função corpo da tarefa
     \param arg argumentos para a tarefa
     \return ID > 0 da tarefa criada ou erro
-
 */
 int task_init (task_t *task, void (*start_func)(void *), void *arg) {
+    if (task == NULL) {
+        fprintf(stderr, "### ERROR task_init: task is null");
+
+        return -1;
+    }
+
+    if (start_func == NULL) {
+        fprintf(stderr, "### ERROR task_init: start_function is null");
+
+        return -2;
+    }
+
+    getcontext(&task->context);
+
+    char *stack;
+    stack = malloc(STACKSIZE);
+    if (stack == NULL) {
+        fprintf(stderr, "### ERROR task_init: could not allocate stack");
+
+        return -3;
+    }
+
+    task->context.uc_link = 0;
+    task->context.uc_stack.ss_flags = 0;
+    task->context.uc_stack.ss_size = STACKSIZE;
+    task->context.uc_stack.ss_sp = stack;
+
 
 }			
 
@@ -38,7 +72,7 @@ int task_init (task_t *task, void (*start_func)(void *), void *arg) {
     \return ID da tarefa corrente
 */
 int task_id () {
-    return !current_task ? 0 : current_task->id;
+    return current_task ? current_task->id : 0;
 }
 
 
