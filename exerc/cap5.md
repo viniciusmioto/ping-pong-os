@@ -31,3 +31,44 @@ int main() {
 ```
 
 ![diagram](../img/ex2-cap5.jpg)
+
+## 3 - Indique quantas letras “X” serão impressas na tela pelo programa abaixo quando for executado com a seguinte linha de comando: 
+
+```bash
+a.out 4 3 2 1 
+```
+
+## O comando a.out resulta da compilação do programa a seguir:
+
+```c
+#include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[])
+{
+    pid_t pid[10];
+    int i;
+
+    int N = atoi(argv[argc - 2]);
+
+    for (i = 0; i < N; i++)
+        pid[i] = fork();
+
+    if (pid[0] != 0 && pid[N - 1] != 0) 
+        pid[N] = fork();
+
+    printf("X");
+    return 0;
+}
+```
+
+A letra "X" será impressa 5 vezes. Devido ao fluxo:
+
+* o processo pai cria 2 filhos (pid[0] e pid[1])
+* como pid[0] e pid[1] são ambos diferentes de 0, o processo pai cria mais um filho (pid[2])
+* como o filho pid[0] foi criado dentro do laço de repetição, ele cria mais um filho no lugar de pid[1]
+* ao todo serão 4 filhos (4 forks)
+* o processo pai imprime a letra "X" e cada processo filho imprime uma letra "X"
+* logo serão impressas 5 letras "X"
