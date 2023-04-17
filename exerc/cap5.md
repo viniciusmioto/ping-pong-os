@@ -72,3 +72,52 @@ A letra "X" será impressa 5 vezes. Devido ao fluxo:
 * ao todo serão 4 filhos (4 forks)
 * o processo pai imprime a letra "X" e cada processo filho imprime uma letra "X"
 * logo serão impressas 5 letras "X"
+
+## 4 - O que são *threads* e para que servem?
+
+Uma *thread* é definida como sendo um fluxo de execução independente. Um processo pode conter uma ou mais threads, cada uma executando seu próprio código e compartilhando recursos com as demais threads localizadas no mesmo processo.
+
+Threads são também utilizadas para implementar fluxos de execução dentro do núcleo do SO, neste caso recebendo o nome de threads de núcleo (em oposição às threads dos processos, denominadas user threads)
+
+## 5 - Quais as principais vantagens e desvantagens de threads em relação a processos?
+
+### Vantagens
+
+* Menor custo de criação
+* Troca de contexto rápida
+* Menor consumo de memória
+* Comunicação mais rápida
+
+### Desvantagens
+
+* Baixa robustez
+* Baixa segurança
+* Dificuldade de depuração
+
+## 6. Forneça dois exemplos de problemas cuja implementação multi-thread não tem desempenho melhor que a respectiva implementação sequencial.
+
+* **Problemas que dependem de I/O**: Se o problema envolver muitas operações de entrada e saída, como ler e escrever arquivos, acessar bancos de dados ou fazer solicitações de rede, a implementação multi-thread pode não ser mais rápida do que a implementação sequencial. Isso ocorre porque a maior parte do tempo é gasta esperando por operações de I/O, e não em cálculos, e os recursos do sistema podem ser melhor utilizados por um único processo que executa essas operações em série.
+
+* **Problemas com dependências de dados**: Em problemas em que as operações devem ser realizadas em uma determinada ordem ou dependem dos resultados de outras operações, a implementação multi-thread pode não ser mais rápida do que a implementação sequencial. Isso ocorre porque a coordenação entre as threads pode criar um overhead adicional, o que pode levar a um desempenho pior do que uma implementação sequencial cuidadosamente otimizada.
+
+## 7. Associe as afirmações a seguir aos seguintes modelos de threads: [a] many-to-one (N:1); [b] one-to-one (1:1); [c] many-to-many (N:M):
+
+[A](a) Tem a implementação mais simples, leve e eficiente.
+
+[C](b) Multiplexa os threads de usuário em um pool de threads de núcleo.
+
+[C](c) Pode impor uma carga muito pesada ao núcleo.
+
+[A](d) Não permite explorar a presença de várias CPUs pelo mesmo processo.
+
+[A](e) Permite uma maior concorrência sem impor muita carga ao núcleo.
+
+[A](f) Geralmente implementado por bibliotecas.
+
+[B](g) É o modelo implementado no Windows NT e seus sucessores.
+
+[A](h) Se um thread bloquear, todos os demais têm de esperar por ele.
+
+[B](i) Cada thread no nível do usuário tem sua correspondente dentro do núcleo.
+
+[C](j) É o modelo com implementação mais complexa.
