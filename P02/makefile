@@ -36,15 +36,15 @@ pingpong-tasks3.o: pingpong-tasks3.c
 
 
 diff1:
-	diff out1.txt saida1.txt
+	diff out1.txt saida-task1.txt
 
 
 diff2:
-	diff out2.txt saida2.txt
+	diff out2.txt saida-task2.txt
 
 
 diff3:
-	diff out3.txt saida3.txt
+	diff out3.txt saida-task3.txt
 
 
 clean:
