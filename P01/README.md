@@ -90,6 +90,6 @@ Salva o contexto de **Main** e troca para **Ping**, depois salva o contexto de *
 
 ## 4 - Para visualizar melhor as trocas de contexto, desenhe o diagrama de tempo dessa execução.
 
-![diagram](../img/diagrama-tempo.jpg)
+![diagram](../img/p1-ex4.jpg)
 
 * description: https://wiki.inf.ufpr.br/maziero/doku.php?id=so:trocas_de_contexto

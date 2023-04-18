@@ -30,4 +30,34 @@ int main() {
 }
 ```
 
-![diagram](../img/ex2-cap5.jpg)
+![diagram](../img/cap5-ex2.jpg)
+
+## 8 - Considerando as implementações de threads N:1 e 1:1 para o trecho de código a seguir, (a) desenhe os diagramas de execução, (b) informe as durações aproxima- das de execução e (c) indique a saída do programa na tela. Considere a operação sleep() como uma chamada de sistema (syscall). 
+
+## A chamada thread_create cria uma nova thread, thread_exit encerra a thread corrente e thread_join espera o encerramento da thread informada como parâmetro.
+
+```c
+int y = 0;
+
+void threadBody
+{
+  int x = 0;
+  sleep(10);
+  printf("x: %d, y:%d\n", ++x, ++y);
+  thread_exit();
+}
+
+main()
+{
+  thread_create(&tA, threadBody, ...);
+  thread_create(&tB, threadBody, ...);
+  sleep(1);
+  thread_join(&tA);
+  thread_join(&tB);
+  sleep(1);
+  thread_create(&tC, threadBody, ...);
+  thread_join(&tC);
+}
+```
+
+![diagram](../img/cap5-ex8.jpg)
