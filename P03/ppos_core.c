@@ -7,21 +7,16 @@
 #include "queue.h"
 
 #define STACKSIZE 64 * 1024
+#define NEW 0
+#define READY 1
+#define RUNNING 2
+#define SUSPENDED 3
+#define TERMINATED 4
 
 task_t *current_task; // ponteiro para a tarefa atual
 task_t main_task;     // tarefa main
 task_t dispatcher;    // tarefa dispatcher
-task_t *queue_tasks;
-
-typedef struct queue_task_t
-{
-    struct queue_task_t *prev;
-    struct queue_task_t *next;
-
-    task_t task;
-} queue_task_t;
-
-// queue_task_t *queue_tasks;
+task_t *ready_tasks;
 
 int t_id = 0;
 
@@ -47,12 +42,41 @@ void print_elem(void *ptr)
 */
 task_t *scheduler()
 {
-    return NULL;
+    if (ready_tasks == NULL)
+        return NULL;
+
+    return ready_tasks;
 }
 
 void dispatcher_body()
 {
-    printf("Sou o dispatcher e vou encerrar\n");
+    task_t *next_task;
+
+    while (user_tasks_count > 0)
+    {
+        next_task = scheduler();
+
+        if (next_task == NULL)
+            return;
+
+        next_task->status = RUNNING;
+
+        queue_remove((queue_t **)&ready_tasks, (queue_t *)next_task);
+        task_switch(next_task);
+
+        switch (next_task->status)
+        {
+        case READY:
+            queue_append((queue_t **)&ready_tasks, (queue_t *)next_task);
+            break;
+        case TERMINATED:
+            free(next_task->context.uc_stack.ss_sp);
+            break;
+        default:
+            break;
+        }
+    }
+
     task_exit(0);
 }
 
@@ -71,11 +95,9 @@ void ppos_init()
     main_task.next = NULL;
 
     current_task = &main_task;
-    queue_tasks = NULL;
-
+    ready_tasks = NULL;
 
     task_init(&dispatcher, dispatcher_body, NULL);
-    task_yield();
 
 #ifdef DEBUG
     printf("ppos_init: sistema inicializado\n");
@@ -134,18 +156,16 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
     task->next = NULL;
     task->prev = NULL;
     task->id = ++t_id;
+    task->status = READY;
 
     if (task->id > 1)
-        queue_append((queue_t **)&queue_tasks, (queue_t *)task);
-    
+        queue_append((queue_t **)&ready_tasks, (queue_t *)task);
 
 #ifdef DEBUG
     printf("task_init: iniciada tarefa %d\n", task->id);
 #endif
 
     user_tasks_count++;
-
-    queue_print("-> ", (queue_t *)queue_tasks, print_elem);
 
     return t_id;
 }
@@ -170,11 +190,19 @@ void task_exit(int exit_code)
     printf("task_exit: tarefa %d sendo encerrada\n", task_id());
 #endif
 
-    // verifica se tarefa atual é a main
-    if (current_task->id != 0 && exit_code == 0)
-        task_switch(&main_task);
+#ifdef DEBUG
+    queue_print("-> ", (queue_t *)ready_tasks, print_elem);
+#endif
 
+    current_task->status = TERMINATED;
     user_tasks_count--;
+
+    // verifica se tarefa atual é a main
+    if (current_task->id == 1) {
+        task_switch(&main_task);
+        return;
+    } else if (current_task->id != 0 && exit_code == 0)
+        task_yield();
 }
 
 /*!
@@ -215,5 +243,8 @@ int task_switch(task_t *task)
 */
 void task_yield()
 {
+    if (current_task->status != TERMINATED)
+        current_task->status = READY;
+
     task_switch(&dispatcher);
 }

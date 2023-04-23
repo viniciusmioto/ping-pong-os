@@ -31,10 +31,6 @@ int main(int argc, char *argv[])
 
    ppos_init();
 
-#ifdef DEBUG
-   printf("initializing tasks\n");
-#endif
-
    task_init(&Pang, Body, "    Pang");
    task_init(&Peng, Body, "        Peng");
    task_init(&Ping, Body, "            Ping");
