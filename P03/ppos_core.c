@@ -18,12 +18,16 @@ task_t main_task;     // tarefa main
 task_t dispatcher;    // tarefa dispatcher
 task_t *ready_tasks;
 
-int t_id = 0;
+int t_id = 0; // id da tarefa atual
 
 // contador de tarefas do usuário, não inclui o dispatcher
 // será usado para o scheduler
 long user_tasks_count;
 
+/*!
+ \brief Imprime o elemento de uma fila
+ \param ptr ponteiro para o elemento
+*/
 void print_elem(void *ptr)
 {
     task_t *elem = ptr;
@@ -52,18 +56,22 @@ void dispatcher_body()
 {
     task_t *next_task;
 
+    // enaquanto houver tarefa de usuário
     while (user_tasks_count > 0)
     {
-        next_task = scheduler();
+        // próxima tarefa decidida pelo scheduler
+        next_task = scheduler(); 
 
         if (next_task == NULL)
             return;
 
         next_task->status = RUNNING;
 
+        // remove a tarefa da fila de prontas e a executa
         queue_remove((queue_t **)&ready_tasks, (queue_t *)next_task);
         task_switch(next_task);
 
+        // verifica o status da tarefa
         switch (next_task->status)
         {
         case READY:
@@ -97,6 +105,7 @@ void ppos_init()
     current_task = &main_task;
     ready_tasks = NULL;
 
+    // inicializa o dispatcher
     task_init(&dispatcher, dispatcher_body, NULL);
 
 #ifdef DEBUG
@@ -134,7 +143,8 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
     // salva o contexto da tarefa atual
     getcontext(&task->context);
 
-    // inicializa stack para alocar memória para as pilhas de contexto usadas na criação das tarefas.
+    // inicializa stack para alocar memória para as pilhas 
+    // de contexto usadas na criação das tarefas.
     char *stack;
     stack = malloc(STACKSIZE);
     if (stack == NULL)
@@ -197,11 +207,13 @@ void task_exit(int exit_code)
     current_task->status = TERMINATED;
     user_tasks_count--;
 
-    // verifica se tarefa atual é a main
-    if (current_task->id == 1) {
+    // verifica se tarefa atual é o dispatcher
+    if (current_task->id == 1)
+    {
         task_switch(&main_task);
         return;
-    } else if (current_task->id != 0 && exit_code == 0)
+    } // verifica se a task atual é a main
+    else if (current_task->id != 0 && exit_code == 0)
         task_yield();
 }
 
