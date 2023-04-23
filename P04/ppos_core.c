@@ -62,6 +62,20 @@ task_t *find_task_by_prio(task_t *queue)
 
         if (aux->dynamic_prio < max_prio_task->dynamic_prio)
             max_prio_task = aux;
+
+        // empate de prioridade dinâmica
+        if (aux->dynamic_prio == max_prio_task->dynamic_prio)
+        {
+            // maior prioridade estática
+            if (aux->static_prio < max_prio_task->static_prio)
+                max_prio_task = aux;
+
+            // empate de prioridade estática
+            if (aux->static_prio == max_prio_task->static_prio) 
+                // menor id
+                if (aux->id < max_prio_task->id)
+                    max_prio_task = aux;
+        }
     }
 
 #ifdef DEBUG
@@ -72,9 +86,9 @@ task_t *find_task_by_prio(task_t *queue)
     aux = queue;
     while (aux->next != queue)
     {
-        if (aux->id != max_prio_task->id)
+        if (aux->id != max_prio_task->id && aux->dynamic_prio > -20)
             aux->dynamic_prio--;
-        
+
         aux = aux->next;
     }
 
@@ -246,7 +260,7 @@ void task_exit(int exit_code)
 #endif
 
 #ifdef DEBUG
-    queue_print("-> ", (queue_t *)ready_tasks, print_elem);
+    queue_print("fila ", (queue_t *)ready_tasks, print_elem);
 #endif
 
     current_task->status = TERMINATED;
