@@ -71,7 +71,7 @@ task_t *find_task_by_prio(task_t *queue)
                 max_prio_task = aux;
 
             // empate de prioridade estática
-            if (aux->static_prio == max_prio_task->static_prio) 
+            if (aux->static_prio == max_prio_task->static_prio)
                 // menor id
                 if (aux->id < max_prio_task->id)
                     max_prio_task = aux;
@@ -158,18 +158,24 @@ void ppos_init()
     main_task.id = t_id;
     main_task.prev = NULL;
     main_task.next = NULL;
+    main_task.status = READY;
+    main_task.static_prio = -20;
+    main_task.dynamic_prio = -20;
 
     current_task = &main_task;
     ready_tasks = NULL;
-
-    // inicializa o dispatcher
-    task_init(&dispatcher, dispatcher_body, NULL);
 
 #ifdef DEBUG
     printf("ppos_init: sistema inicializado\n");
 #endif
 
-    user_tasks_count = 0;
+    queue_append((queue_t **)&ready_tasks, (queue_t *)&main_task);
+
+    // inicializa o dispatcher
+    task_init(&dispatcher, dispatcher_body, NULL);
+    task_yield();
+
+    user_tasks_count = 1;
 }
 
 // gerência de tarefas =========================================================
@@ -185,15 +191,13 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
 {
     if (task == NULL)
     {
-        fprintf(stderr, "### ERROR task_init: task nula");
-
+        fprintf(stderr, "### ERROR task_init: task nula\n");
         return -1;
     }
 
     if (start_func == NULL)
     {
-        fprintf(stderr, "### ERROR task_init: start_function nula");
-
+        fprintf(stderr, "### ERROR task_init: start_function nula\n");
         return -2;
     }
 
@@ -206,7 +210,7 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
     stack = malloc(STACKSIZE);
     if (stack == NULL)
     {
-        fprintf(stderr, "### ERROR task_init: pilha não alocada");
+        fprintf(stderr, "### ERROR task_init: pilha não alocada\n");
 
         return -3;
     }
@@ -227,7 +231,8 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
     task->static_prio = 0;
     task->dynamic_prio = 0;
 
-    if (task->id > 1)
+    // verifica se não é o dispatcher
+    if (task->id != 1)
         queue_append((queue_t **)&ready_tasks, (queue_t *)task);
 
 #ifdef DEBUG
@@ -272,7 +277,7 @@ void task_exit(int exit_code)
         task_switch(&main_task);
         return;
     } // verifica se a task atual é a main
-    else if (current_task->id != 0 && exit_code == 0)
+    else if (exit_code == 0)
         task_yield();
 }
 
@@ -285,7 +290,7 @@ int task_switch(task_t *task)
 {
     if (task == NULL)
     {
-        fprintf(stderr, "### ERROR task_switch: task selecionada está nula");
+        fprintf(stderr, "### ERROR task_switch: task selecionada está nula\n");
         return -1;
     }
 

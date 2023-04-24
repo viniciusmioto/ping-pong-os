@@ -45,9 +45,7 @@ int main (int argc, char *argv[])
   task_setprio (&Pong, 6);
 
   task_init (&Pung, Body, "                    Pung") ;
-  task_setprio (&Pung, 0);
-
-  task_yield();
+  task_setprio (&Pung, 8);
 
   printf ("main: fim\n");
 
