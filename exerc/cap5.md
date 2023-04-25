@@ -30,7 +30,7 @@ int main() {
 }
 ```
 
-![diagram](../img/cap5-ex2.jpg)
+![diagram](../img/ex2-cap5.jpg)
 
 ## 3 - Indique quantas letras “X” serão impressas na tela pelo programa abaixo quando for executado com a seguinte linha de comando: 
 
@@ -151,4 +151,4 @@ main()
 }
 ```
 
-![diagram](../img/cap5-ex8.jpg)
+![diagram](../img/ex8-cap5.jpg)

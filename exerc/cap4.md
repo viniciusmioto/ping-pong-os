@@ -12,7 +12,7 @@ A duração do quantum de processamento é escolhida com base em critérios como
 
 ## 3 - Considerando o diagrama de estados dos processos apresentado na figura a seguir, complete o diagrama com a transição de estado que está faltando (t6) e apresente o significado de cada um dos estados e transições.
 
-![diagram](../img/cap4-ex3.jpg)
+![diagram](../img/ex3-cap4.jpg)
 
 ### Estados
 * `E1`: novo
