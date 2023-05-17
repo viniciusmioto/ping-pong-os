@@ -10,6 +10,12 @@
 #define __PPOS_DATA__
 
 #include <ucontext.h>		// biblioteca POSIX de trocas de contexto
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <signal.h>
+#include <sys/time.h>
+#include "queue.h"
 
 #define STACKSIZE 64 * 1024
 
@@ -37,7 +43,7 @@ typedef struct task_t
   short unsigned int quantum ;			// ticks restantes para a tarefa
   unsigned int activations ;		// número de ativações da tarefa
   unsigned int processor_time ;		// tempo de processador consumido pela tarefa
-  unsigned int life_time ;		// tempo de vida da tarefa
+  unsigned int execution_time ;		// tempo de vida da tarefa
   // ... (outros campos serão adicionados mais tarde)
 } task_t ;
 

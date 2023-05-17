@@ -1,12 +1,6 @@
 // Vinicius Mioto - GRR20203931 (BCC)
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <signal.h>
-#include <sys/time.h>
 #include "ppos.h" // estruturas de dados necessárias
-#include "queue.h"
 
 // tarefas do sistema operacional ----------
 task_t *current_task; // ponteiro para a tarefa atual
@@ -24,6 +18,13 @@ struct itimerval timer; // inicialização do timer
 unsigned int ticks = 0; // contador de ticks
 
 int t_id = 0; // id da tarefa atual
+
+unsigned int system_time; // tempo do sistema
+
+unsigned int systime()
+{
+    return system_time;
+}
 
 // contador de tarefas do usuário, não inclui o dispatcher
 // será usado para o scheduler
@@ -160,9 +161,9 @@ static void quantum_handler()
 {
     current_task->quantum--;
 
-// #ifdef DEBUG
-//     printf("ID: %d | Q: %d\n", task_id(), current_task->quantum);
-// #endif
+    // #ifdef DEBUG
+    //     printf("ID: %d | Q: %d\n", task_id(), current_task->quantum);
+    // #endif
 
     if (current_task->quantum <= 0 && current_task->type == USER)
     {
@@ -203,7 +204,7 @@ void ppos_init()
     action.sa_handler = quantum_handler;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
-    
+
     if (sigaction(SIGALRM, &action, 0) < 0)
     {
         perror("Erro em sigaction: ");
@@ -291,7 +292,7 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
     task->quantum = QUANTUM;
     task->activations = 0;
     task->processor_time = 0;
-    task->life_time = 0;
+    task->execution_time = 0;
 
     if (task->id == 1)
         task->type = SYSTEM;
@@ -327,9 +328,7 @@ int task_id()
 */
 void task_exit(int exit_code)
 {
-#ifdef DEBUG
-    printf("task_exit: tarefa %d sendo encerrada\n", task_id());
-#endif
+    printf("Task %d exit: execution time %d ms, processor time  %d ms, %d activations\n", task_id(), current_task->execution_time, current_task->processor_time, current_task->activations);
 
 #ifdef DEBUG
     queue_print("fila ", (queue_t *)ready_tasks, print_elem);
@@ -373,6 +372,9 @@ int task_switch(task_t *task)
 #ifdef DEBUG
     printf("task_switch: trocando contexto %d -> %d\n", aux_current_task->id, task->id);
 #endif
+
+    current_task->status = SUSPENDED;
+    task->activations++;
 
     swapcontext(&(aux_current_task->context), &(task->context));
 
