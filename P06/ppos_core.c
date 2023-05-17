@@ -15,15 +15,13 @@ struct sigaction action; // tratador de sinal
 
 struct itimerval timer; // inicialização do timer
 
-unsigned int ticks = 0; // contador de ticks
+unsigned int quantum_ticks = 0; // contador de ticks
 
 int t_id = 0; // id da tarefa atual
 
-unsigned int system_time; // tempo do sistema
-
 unsigned int systime()
 {
-    return system_time;
+    return quantum_ticks;
 }
 
 // contador de tarefas do usuário, não inclui o dispatcher
@@ -160,9 +158,11 @@ void dispatcher_body()
 static void quantum_handler()
 {
     current_task->quantum--;
+    current_task->processor_time++;
+    quantum_ticks++;
 
     // #ifdef DEBUG
-    //     printf("ID: %d | Q: %d\n", task_id(), current_task->quantum);
+    //     printf("ID: %d | QT: %d\n", task_id(), current_task->quantum);
     // #endif
 
     if (current_task->quantum <= 0 && current_task->type == USER)
@@ -292,7 +292,7 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
     task->quantum = QUANTUM;
     task->activations = 0;
     task->processor_time = 0;
-    task->execution_time = 0;
+    task->execution_time = quantum_ticks;
 
     if (task->id == 1)
         task->type = SYSTEM;
@@ -328,6 +328,8 @@ int task_id()
 */
 void task_exit(int exit_code)
 {
+    current_task->execution_time = quantum_ticks - current_task->execution_time;
+    
     printf("Task %d exit: execution time %d ms, processor time  %d ms, %d activations\n", task_id(), current_task->execution_time, current_task->processor_time, current_task->activations);
 
 #ifdef DEBUG
