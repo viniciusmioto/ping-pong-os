@@ -36,25 +36,6 @@ struct itimerval timer; // inicialização do timer
 
 unsigned int ticks = 0; // contador de ticks
 
-/*!
-    \brief Tratador do sinal de timer
-    \param signum número do sinal recebido
-*/
-static void tratador(int signum)
-{
-    current_task->quantum--;
-
-#ifdef DEBUG
-    printf("ID: %d | Q: %d\n", task_id(), current_task->quantum);
-#endif
-
-    if (current_task->quantum <= 0 && current_task->type == USER)
-    {
-        current_task->quantum = QUANTUM;
-        task_yield();
-    }
-}
-
 int t_id = 0; // id da tarefa atual
 
 // contador de tarefas do usuário, não inclui o dispatcher
@@ -186,6 +167,24 @@ void dispatcher_body()
 }
 
 /*!
+    \brief Tratador do sinal de timer
+*/
+static void quantum_handler()
+{
+    current_task->quantum--;
+
+// #ifdef DEBUG
+//     printf("ID: %d | Q: %d\n", task_id(), current_task->quantum);
+// #endif
+
+    if (current_task->quantum <= 0 && current_task->type == USER)
+    {
+        current_task->quantum = QUANTUM;
+        task_yield();
+    }
+}
+
+/*!
     \brief Inicializa a tarefa main;
 */
 void main_setup()
@@ -214,7 +213,7 @@ void ppos_init()
     // inicializa a main
     main_setup();
 
-    action.sa_handler = tratador;
+    action.sa_handler = quantum_handler;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
     
@@ -308,8 +307,6 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
         task->type = SYSTEM;
     else
         task->type = USER;
-
-    printf("type: %d\n", task->type);
 
     // verifica se não é o dispatcher
     if (task->id != 1)

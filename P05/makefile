@@ -5,6 +5,9 @@ CC = gcc
 
 all: testa.out
 
+stress: ppos_core.o pingpong-preempcao-stress.o queue.o ppos_core.o
+	$(CC) -o testa-stress.out pingpong-preempcao-stress.o queue.o ppos_core.o
+
 debug: ppos_core_debug.o $(OBJECTS)
 	$(CC) -o testa.out $(OBJECTS) $(DEBUG)
 
