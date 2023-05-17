@@ -3,20 +3,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <signal.h>
+#include <sys/time.h>
 #include "ppos.h" // estruturas de dados necessárias
 #include "queue.h"
 
 #define STACKSIZE 64 * 1024
+
+// estados das tarefas ----------
 #define NEW 0
 #define READY 1
 #define RUNNING 2
 #define SUSPENDED 3
 #define TERMINATED 4
 
+// tipos de tarefas ----------
+#define USER 0
+#define SYSTEM 1
+
+// tarefas do sistema operacional ----------
 task_t *current_task; // ponteiro para a tarefa atual
 task_t main_task;     // tarefa main
 task_t dispatcher;    // tarefa dispatcher
-task_t *ready_tasks;
+task_t *ready_tasks;  // fila de tarefas prontas
+
+// temporizador ----------
+#define QUANTUM 20 // quantum em milisegundos
+
+struct sigaction action; // tratador de sinal
+
+struct itimerval timer; // inicialização do timer
+
+unsigned int ticks = 0; // contador de ticks
+
+/*!
+    \brief Tratador do sinal de timer
+    \param signum número do sinal recebido
+*/
+static void tratador(int signum)
+{
+    current_task->quantum--;
+
+#ifdef DEBUG
+    printf("ID: %d | Q: %d\n", task_id(), current_task->quantum);
+#endif
+
+    if (current_task->quantum <= 0 && current_task->type == USER)
+    {
+        current_task->quantum = QUANTUM;
+        task_yield();
+    }
+}
 
 int t_id = 0; // id da tarefa atual
 
@@ -25,8 +62,8 @@ int t_id = 0; // id da tarefa atual
 long user_tasks_count;
 
 /*!
- \brief Imprime o elemento de uma fila
- \param ptr ponteiro para o elemento
+    \brief Imprime o elemento de uma fila
+    \param ptr ponteiro para o elemento
 */
 void print_elem(void *ptr)
 {
@@ -40,7 +77,7 @@ void print_elem(void *ptr)
     elem->next ? printf("%d", (elem->next)->id) : printf("*");
 }
 
-/*
+/*!
     \brief Encontra a tarefa com maior prioridade na fila (menor valor)
     \param queue ponteiro para a fila de tarefas
     \return ponteiro para a tarefa com maior prioridade
@@ -109,6 +146,9 @@ task_t *scheduler()
     return find_task_by_prio(ready_tasks);
 }
 
+/*!
+    \brief Despachante do sistema operacional. Realiza as trocas de contexto.
+*/
 void dispatcher_body()
 {
     task_t *next_task;
@@ -146,6 +186,23 @@ void dispatcher_body()
 }
 
 /*!
+    \brief Inicializa a tarefa main;
+*/
+void main_setup()
+{
+    main_task.id = t_id;
+    main_task.prev = NULL;
+    main_task.next = NULL;
+    main_task.status = READY;
+    main_task.static_prio = -20;
+    main_task.dynamic_prio = -20;
+    main_task.type = SYSTEM;
+
+    current_task = &main_task;
+    ready_tasks = NULL;
+}
+
+/*!
     \brief Inicializa o sistema operacional;
     deve ser chamada no inicio do main()
 */
@@ -154,16 +211,31 @@ void ppos_init()
     // desativa o buffer da saida padrao (stdout), usado pela função printf
     setvbuf(stdout, 0, _IONBF, 0);
 
-    // cria a tarefa main
-    main_task.id = t_id;
-    main_task.prev = NULL;
-    main_task.next = NULL;
-    main_task.status = READY;
-    main_task.static_prio = -20;
-    main_task.dynamic_prio = -20;
+    // inicializa a main
+    main_setup();
 
-    current_task = &main_task;
-    ready_tasks = NULL;
+    action.sa_handler = tratador;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+    
+    if (sigaction(SIGALRM, &action, 0) < 0)
+    {
+        perror("Erro em sigaction: ");
+        exit(1);
+    }
+
+    // ajusta valores do temporizador
+    timer.it_value.tv_usec = 1000;    // primeiro disparo, em micro-segundos
+    timer.it_value.tv_sec = 0;        // primeiro disparo, em segundos
+    timer.it_interval.tv_usec = 1000; // disparos subsequentes, em micro-segundos
+    timer.it_interval.tv_sec = 0;     // disparos subsequentes, em segundos
+
+    // arma o temporizador ITIMER_REAL
+    if (setitimer(ITIMER_REAL, &timer, 0) < 0)
+    {
+        perror("Erro em setitimer: ");
+        exit(1);
+    }
 
 #ifdef DEBUG
     printf("ppos_init: sistema inicializado\n");
@@ -181,7 +253,7 @@ void ppos_init()
 // gerência de tarefas =========================================================
 
 /*!
-    \brief Inicializa uma nova tarefa
+    \brief Inicializa uma nova tarefa exceto a main
     \param task descritor da nova tarefa
     \param start_func função corpo da tarefa
     \param arg argumentos para a tarefa
@@ -230,6 +302,14 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
     task->status = READY;
     task->static_prio = 0;
     task->dynamic_prio = 0;
+    task->quantum = QUANTUM;
+
+    if (task->id == 1)
+        task->type = SYSTEM;
+    else
+        task->type = USER;
+
+    printf("type: %d\n", task->type);
 
     // verifica se não é o dispatcher
     if (task->id != 1)
@@ -271,12 +351,12 @@ void task_exit(int exit_code)
     current_task->status = TERMINATED;
     user_tasks_count--;
 
-    // verifica se tarefa atual é o dispatcher
+    // verifica se tarefa atual é o dispatcher (id = 1)
     if (current_task->id == 1)
     {
         task_switch(&main_task);
         return;
-    } // verifica se a task atual é a main
+    } // verifica se a task atual é a main (id = 0)
     else if (exit_code == 0)
         task_yield();
 }

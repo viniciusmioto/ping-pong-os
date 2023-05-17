@@ -18,6 +18,8 @@ typedef struct task_t
   short status ;			// pronta, rodando, suspensa, ...
   int static_prio ;			// prioridade estática da tarefa
   int dynamic_prio ;			// prioridade dinâmica da tarefa
+  short type ;				// tipo de tarefa (user, system)
+  unsigned int quantum ;			// ticks restantes para a tarefa
   // ... (outros campos serão adicionados mais tarde)
 } task_t ;
 

@@ -1,0 +1,30 @@
+CFLAGS = -Wall
+DEBUG = -DDEBUG -g
+OBJECTS = pingpong-preempcao.o queue.o ppos_core.o
+CC = gcc
+
+all: testa.out
+
+debug: ppos_core_debug.o $(OBJECTS)
+	$(CC) -o testa.e $(OBJECTS) $(DEBUG)
+
+testa.e: $(OBJECTS)
+	$(CC) -o testa.e $(OBJECTS)
+
+pingpong-preempcao.o: pingpong-preempcao.c
+	$(CC) $(CFLAGS) -c pingpong-preempcao.c
+
+ppos_core.o: ppos_core.c ppos.h ppos_data.h
+	$(CC) $(CFLAGS) -c ppos_core.c
+
+queue.o: queue.c
+	$(CC) $(CFLAGS) -c queue.c
+
+ppos_core_debug.o: ppos_core.c ppos.h ppos_data.h
+	$(CC) $(CFLAGS) $(DEBUG) -c ppos_core.c 
+
+clean:
+	-rm -rf *.o
+
+purge: clean
+	-rm -rf testa.out
