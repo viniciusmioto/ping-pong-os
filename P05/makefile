@@ -6,10 +6,10 @@ CC = gcc
 all: testa.out
 
 debug: ppos_core_debug.o $(OBJECTS)
-	$(CC) -o testa.e $(OBJECTS) $(DEBUG)
+	$(CC) -o testa.out $(OBJECTS) $(DEBUG)
 
-testa.e: $(OBJECTS)
-	$(CC) -o testa.e $(OBJECTS)
+testa.out: $(OBJECTS)
+	$(CC) -o testa.out $(OBJECTS)
 
 pingpong-preempcao.o: pingpong-preempcao.c
 	$(CC) $(CFLAGS) -c pingpong-preempcao.c
