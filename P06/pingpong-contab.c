@@ -37,6 +37,8 @@ int main (int argc, char *argv[])
 {
    printf ("main: inicio\n");
 
+   queue_append(NULL, NULL);
+
    ppos_init () ;
 
    task_init (&Pang, Body, "    Pang") ;

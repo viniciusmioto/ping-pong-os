@@ -34,7 +34,7 @@ void queue_print(char *name, queue_t *queue, void print_elem(void *))
     // check if the queue exists or is not empty
     if (queue == NULL)
     {
-        printf("%s: []\n", name);
+        printf("%s: [] \n", name);
         return;
     }
 
@@ -53,7 +53,7 @@ void queue_print(char *name, queue_t *queue, void print_elem(void *))
     // print the last element
     print_elem(aux);
 
-    printf("]\n");
+    printf("] \n");
 }
 
 // Insere um elemento no final da fila.
@@ -67,20 +67,20 @@ int queue_append(queue_t **queue, queue_t *elem)
     // the queue must exist
     if (queue == NULL)
     {
-        fprintf(stderr, "### ERROR - queue_append: queue does not exist \n");  
+        fprintf(stderr, "\033[0;31m ### ERROR - queue_append: queue does not exist \033[0m \n");  
         return -1;
     }
 
     // the element must exist
     if (elem == NULL)
     {
-        fprintf(stderr, "### ERROR - queue_append: element does not exist \n");
+        fprintf(stderr, "\033[0;31m ### ERROR - queue_append: element does not exist \033[0m \n");
         return -2;
     }
     // the element must not be in another queue
     if (elem->next != NULL || elem->prev != NULL)
     {
-        fprintf(stderr, "### ERROR - queue_append: element is already in a queue \n");
+        fprintf(stderr, "\033[0;31m ### ERROR - queue_append: element is already in a queue \033[0m \n");
         return -3;
     }
 
@@ -143,28 +143,28 @@ int queue_remove(queue_t **queue, queue_t *elem)
     // the queue must exist
     if (queue == NULL)
     {
-        fprintf(stderr, "### ERROR - queue_remove: queue does not exist \n");
+        fprintf(stderr, "\033[0;31m ### ERROR - queue_remove: queue does not exist \033[0m \n");
         return -1;
     }
 
     // the queue must not be empty
     if (*queue == NULL && queue_size(*queue) == 0)
     {
-        fprintf(stderr, "### ERROR - queue_remove: queue is empty \n");
+        fprintf(stderr, "\033[0;31m ### ERROR - queue_remove: queue is empty \033[0m \n");
         return -2;
     }
 
     // the element must exist
     if (elem == NULL)
     {
-        fprintf(stderr, "### ERROR - queue_remove: element does not exist \n");
+        fprintf(stderr, "\033[0;31m ### ERROR - queue_remove: element does not exist \033[0m \n");
         return -3;
     }
 
     // the element must be in the given queue
     if (search_element(*queue, elem))
     {
-        fprintf(stderr, "### ERROR - queue_remove: element is not in the given queue \n");
+        fprintf(stderr, "\033[0;31m ### ERROR - queue_remove: element is not in the given queue \033[0m \n");
         return -4;
     }
 

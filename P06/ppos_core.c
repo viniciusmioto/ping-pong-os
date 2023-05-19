@@ -82,9 +82,9 @@ task_t *find_task_by_prio(task_t *queue)
         }
     }
 
-#ifdef DEBUG
-    printf("-> Maior prioridade: %d - Tarefa: %d\n", max_prio_task->dynamic_prio, max_prio_task->id);
-#endif
+// #ifdef DEBUG
+//     printf("\033[0;32m-> Maior prioridade: %d - Tarefa: %d \033[0m \n\n", max_prio_task->dynamic_prio, max_prio_task->id);
+// #endif
 
     // reajusta a prioridades dinâmicas (aging)
     aux = queue;
@@ -162,7 +162,7 @@ static void quantum_handler()
     quantum_ticks++;
 
     // #ifdef DEBUG
-    //     printf("ID: %d | QT: %d\n", task_id(), current_task->quantum);
+    //     printf("\033[0;32mID: %d | QT: %d \033[0m \n\n", task_id(), current_task->quantum);
     // #endif
 
     if (current_task->quantum <= 0 && current_task->type == USER)
@@ -225,7 +225,7 @@ void ppos_init()
     }
 
 #ifdef DEBUG
-    printf("ppos_init: sistema inicializado\n");
+    printf("\033[0;32mppos_init: sistema inicializado \033[0m \n\n");
 #endif
 
     queue_append((queue_t **)&ready_tasks, (queue_t *)&main_task);
@@ -304,7 +304,7 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg)
         queue_append((queue_t **)&ready_tasks, (queue_t *)task);
 
 #ifdef DEBUG
-    printf("task_init: iniciada tarefa %d\n", task->id);
+    printf("\033[0;32mtask_init: iniciada tarefa %d \033[0m \n\n", task->id);
 #endif
 
     user_tasks_count++;
@@ -333,7 +333,8 @@ void task_exit(int exit_code)
     printf("Task %d exit: execution time %d ms, processor time  %d ms, %d activations\n", task_id(), current_task->execution_time, current_task->processor_time, current_task->activations);
 
 #ifdef DEBUG
-    queue_print("fila ", (queue_t *)ready_tasks, print_elem);
+    queue_print("\033[0;32mfila \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
+    printf("\033[0;m");
 #endif
 
     current_task->status = TERMINATED;
@@ -371,9 +372,9 @@ int task_switch(task_t *task)
     task_t *aux_current_task = current_task;
     current_task = task;
 
-#ifdef DEBUG
-    printf("task_switch: trocando contexto %d -> %d\n", aux_current_task->id, task->id);
-#endif
+// #ifdef DEBUG
+//     printf("\033[0;32mtask_switch: trocando contexto %d -> %d \033[0m \n\n", aux_current_task->id, task->id);
+// #endif
 
     current_task->status = SUSPENDED;
     task->activations++;
