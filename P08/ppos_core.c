@@ -349,7 +349,7 @@ void task_exit(int exit_code) {
 */
 int task_switch(task_t *task) {
     if (task == NULL) {
-        fprintf(stderr, "### ERROR task_switch: task selecionada está nula\n");
+        fprintf(stderr, "\033[0;31m ### ERROR task_switch: task selecionada está nula \033[0m\n");
         return -1;
     }
 
@@ -410,18 +410,18 @@ int task_getprio(task_t *task) {
  */
 void task_suspend(task_t **queue) {
     if (current_task->id == 1) {
-        fprintf(stderr, "### ERROR task_suspend: dispatcher cannot be suspended\n");
+        fprintf(stderr, "\033[0;31m ### ERROR task_suspend: dispatcher cannot be suspended \033[0m \n");
         return;
     }
 
     if (queue_remove((queue_t **)&ready_tasks, (queue_t *)current_task) < 0) {
-        fprintf(stderr, "### ERROR task_suspend: task is not in ready queue\n");
+        fprintf(stderr, "\033[0;31m ### ERROR task_suspend: task is not in ready queue \033[0m\n");
         return;
     }
     current_task->status = SUSPENDED;
 
     if (queue_append((queue_t **)queue, (queue_t *)current_task) < 0) {
-        fprintf(stderr, "### ERROR task_suspend: task could not be appended to suspended queue\n");
+        fprintf(stderr, "\033[0;31m ### ERROR task_suspend: task could not be appended to suspended queue\033[0m\n");
         return;
     }
 
@@ -435,7 +435,7 @@ void task_suspend(task_t **queue) {
  */
 void task_resume(task_t *task, task_t **queue) {
 #ifdef DEBUG
-    printf("task_resume: resuming %d\n", task->id);
+    printf("\033[0;36m task_resume: resuming %d\n \033[0m", task->id);
 #endif
 
     queue_remove((queue_t **)queue, (queue_t *)task);
@@ -452,7 +452,7 @@ void task_resume(task_t *task, task_t **queue) {
 */
 int task_wait(task_t *task) {
     if (task == NULL) {
-        fprintf(stderr, "### ERROR task_wait: task is NULL \n");
+        fprintf(stderr, "\033[0;31m ### ERROR task_wait: task is NULL \033[0m \n");
         return -1;
     }
 
