@@ -43,11 +43,11 @@ void print_elem(void *ptr) {
 }
 
 /*!
-    \brief Encontra a tarefa com maior prioridade na fila (menor valor)
-    \param queue ponteiro para a fila de tarefas
-    \return ponteiro para a tarefa com maior prioridade
-    \\ ou NULL se a fila estiver vazia
-*/
+ * \brief Encontra a tarefa com maior prioridade na fila (menor valor)
+ * \param queue ponteiro para a fila de tarefas
+ * \return ponteiro para a tarefa com maior prioridade
+ * ou NULL se a fila estiver vazia
+ */
 task_t *find_task_by_prio(task_t *queue) {
     // verifica se a fila está vazia
     if (queue == NULL)
@@ -121,9 +121,12 @@ void dispatcher_body() {
             return;
 
         next_task->status = RUNNING;
+        current_task->status = READY;
 
         // remove a tarefa da fila de prontas e a executa
-        queue_remove((queue_t **)&ready_tasks, (queue_t *)next_task);
+        if (next_task->id != 0)
+            queue_remove((queue_t **)&ready_tasks, (queue_t *)next_task);
+
         task_switch(next_task);
 
         // verifica o status da tarefa
@@ -168,9 +171,9 @@ void main_setup() {
     main_task.prev = NULL;
     main_task.next = NULL;
     main_task.status = READY;
-    main_task.static_prio = -20;
-    main_task.dynamic_prio = -20;
-    main_task.type = SYSTEM;
+    main_task.static_prio = 0;
+    main_task.dynamic_prio = 0;
+    main_task.type = USER;
 
     current_task = &main_task;
     ready_tasks = NULL;
@@ -208,11 +211,13 @@ void ppos_init() {
         exit(1);
     }
 
-#ifdef DEBUG
-    printf("\033[0;32mppos_init: sistema inicializado \033[0m \n\n");
-#endif
-
     queue_append((queue_t **)&ready_tasks, (queue_t *)&main_task);
+
+#ifdef DEBUG
+    printf("\033[0;32m Inicializa Main \033[0;m\n");
+    queue_print("\033[0;32m Prontas \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
+    printf("\033[0;m");
+#endif
 
     // inicializa o dispatcher
     task_init(&dispatcher, dispatcher_body, NULL);
@@ -224,22 +229,22 @@ void ppos_init() {
 // gerência de tarefas =========================================================
 
 /*!
-    \brief Inicializa uma nova tarefa exceto a main
-    \param task descritor da nova tarefa
-    \param start_func função corpo da tarefa
-    \param arg argumentos para a tarefa
-    \return ID > 0 da tarefa criada ou erro
-*/
+ * \brief Inicializa uma nova tarefa
+ * \param task descritor da nova tarefa
+ * \param start_func função corpo da tarefa
+ * \param arg argumentos para a tarefa
+ * \return ID > 0 da tarefa criada ou erro
+ */
 int task_init(task_t *task, void (*start_func)(void *), void *arg) {
     if (task == NULL) {
         fprintf(stderr, "### ERROR task_init: task nula\n");
         return -1;
     }
 
-    if (start_func == NULL) {
-        fprintf(stderr, "### ERROR task_init: start_function nula\n");
-        return -2;
-    }
+    // if (start_func == NULL) {
+    //     fprintf(stderr, "### ERROR task_init: start_function nula\n");
+    //     return -2;
+    // }
 
     // salva o contexto da tarefa atual
     getcontext(&task->context);
@@ -273,21 +278,24 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg) {
     task->activations = 0;
     task->processor_time = 0;
     task->execution_time = quantum_ticks;
-
-    if (task->id == 1)
-        task->type = SYSTEM;
-    else
-        task->type = USER;
+    task->wait_queue = NULL;
 
     // verifica se não é o dispatcher
-    if (task->id != 1)
+    if (task->id != 1) {
+        task->type = USER;
         queue_append((queue_t **)&ready_tasks, (queue_t *)task);
+    }
 
 #ifdef DEBUG
     printf("\033[0;32mtask_init: iniciada tarefa %d \033[0m \n\n", task->id);
 #endif
 
     user_tasks_count++;
+
+#ifdef DEBUG
+    queue_print("\033[0;32m Prontas \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
+    printf("\033[0;m");
+#endif
 
     return t_id;
 }
@@ -311,12 +319,19 @@ void task_exit(int exit_code) {
     printf("Task %d exit: execution time %d ms, processor time  %d ms, %d activations\n", task_id(), current_task->execution_time, current_task->processor_time, current_task->activations);
 
 #ifdef DEBUG
-    queue_print("\033[0;32mfila \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
+    queue_print("\033[0;32m Prontas \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
+    printf("\033[0;m");
+    queue_print("\033[0;32m Suspensas \033[0;34m \n", (queue_t *)current_task->wait_queue, print_elem);
     printf("\033[0;m");
 #endif
 
     current_task->status = TERMINATED;
     user_tasks_count--;
+
+    task_t *aux_task;
+    while ((aux_task = current_task->wait_queue)) {
+        task_resume(aux_task, &current_task->wait_queue);
+    }
 
     // verifica se tarefa atual é o dispatcher (id = 1)
     if (current_task->id == 1) {
@@ -347,11 +362,10 @@ int task_switch(task_t *task) {
     task_t *aux_current_task = current_task;
     current_task = task;
 
-    // #ifdef DEBUG
-    //     printf("\033[0;32mtask_switch: trocando contexto %d -> %d \033[0m \n\n", aux_current_task->id, task->id);
-    // #endif
+// #ifdef DEBUG
+//     printf("\033[0;32mtask_switch: trocando contexto %d -> %d \033[0m \n\n", aux_current_task->id, task->id);
+// #endif
 
-    current_task->status = SUSPENDED;
     task->activations++;
 
     swapcontext(&(aux_current_task->context), &(task->context));
@@ -365,7 +379,7 @@ int task_switch(task_t *task) {
     \brief A tarefa atual libera o processador para outra tarefa
 */
 void task_yield() {
-    if (current_task->status != TERMINATED)
+    if (current_task->status != TERMINATED && current_task->status != SUSPENDED)
         current_task->status = READY;
 
     task_switch(&dispatcher);
@@ -390,6 +404,59 @@ int task_getprio(task_t *task) {
     return task != NULL ? task->dynamic_prio : current_task->dynamic_prio;
 }
 
+/*!
+ * \brief Suspende a tarefa atual e retorna ao contexto do dispatcher
+ * \param queue ponteiro para a fila de tarefas suspensas
+ */
+void task_suspend(task_t **queue) {
+    if (current_task->id == 1) {
+        fprintf(stderr, "### ERROR task_suspend: dispatcher cannot be suspended\n");
+        return;
+    }
+
+    if (queue_remove((queue_t **)&ready_tasks, (queue_t *)current_task) < 0) {
+        fprintf(stderr, "### ERROR task_suspend: task is not in ready queue\n");
+        return;
+    }
+    current_task->status = SUSPENDED;
+
+    if (queue_append((queue_t **)queue, (queue_t *)current_task) < 0) {
+        fprintf(stderr, "### ERROR task_suspend: task could not be appended to suspended queue\n");
+        return;
+    }
+
+    task_yield();
+}
+
+/*!
+ * \brief Reativa uma tarefa e a coloca na fila de prontas
+ * \param task descritor da tarefa a ser acordada
+ * \param queue ponteiro para a fila de tarefas suspensas
+ */
+void task_resume(task_t *task, task_t **queue) {
+#ifdef DEBUG
+    printf("task_resume: resuming %d\n", task->id);
+#endif
+
+    queue_remove((queue_t **)queue, (queue_t *)task);
+    queue_append((queue_t **)&ready_tasks, (queue_t *)task);
+    task->status = READY;
+
+    task_yield();
+}
+
+/*!
+    \brief Suspende a tarefa atual para esperar a conclusão de uma tarefa específica
+    \param task descritor da tarefa que deve ser aguardada
+    \return 0 se sucesso, < 0 se erro
+*/
 int task_wait(task_t *task) {
-    return 0;
+    if (task == NULL) {
+        fprintf(stderr, "### ERROR task_wait: task is NULL \n");
+        return -1;
+    }
+
+    task_suspend(&task->wait_queue);
+
+    return task->id;
 }
