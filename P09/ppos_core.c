@@ -20,18 +20,18 @@ unsigned int quantum_ticks = 0; // contador de ticks
 
 int t_id = 0; // id da tarefa atual
 
-unsigned int systime() {
-    return quantum_ticks;
-}
-
 // contador de tarefas do usuário, não inclui o dispatcher
 // será usado para o scheduler
 long user_tasks_count;
 
+unsigned int systime() {
+    return quantum_ticks;
+}
+
 /*!
-    \brief Imprime o elemento de uma fila
-    \param ptr ponteiro para o elemento
-*/
+ * \brief Imprime o elemento de uma fila
+ * \param ptr ponteiro para o elemento
+ */
 void print_elem(void *ptr) {
     task_t *elem = ptr;
 
@@ -44,11 +44,23 @@ void print_elem(void *ptr) {
 }
 
 /*!
+ * \brief Imprime as filas de tarefas prontas e suspensas
+ */
+void print_task_queues() {
+    queue_print("\033[0;32m Ready \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
+    printf("\033[0;m");
+    queue_print("\033[0;32m Suspended \033[0;34m \n", (queue_t *)sleeping_tasks, print_elem);
+    printf("\033[0;m");
+}
+
+/*!
  * \brief Verifica se há tarefas dormindo que devem ser acordadas
  */
 void check_sleeping_tasks() {
     if (sleeping_tasks == NULL) {
-        printf("sleeping_tasks is NULL\n");
+#ifdef DEBUG
+        printf("\033[0;30m sleeping_tasks is NULL\033[0m\n");
+#endif
         return;
     }
 
@@ -105,10 +117,6 @@ task_t *find_task_by_prio(task_t *queue) {
         }
     }
 
-    // #ifdef DEBUG
-    //     printf("\033[0;32m-> Maior prioridade: %d - Tarefa: %d \033[0m \n\n", max_prio_task->dynamic_prio, max_prio_task->id);
-    // #endif
-
     // reajusta a prioridades dinâmicas (aging)
     aux = queue;
     while (aux->next != queue) {
@@ -124,20 +132,18 @@ task_t *find_task_by_prio(task_t *queue) {
 }
 
 /*!
-    \brief Decide a próxima tarefa a ser executada
-    \return ponteiro para a próxima tarefa
-*/
+ * \brief Decide a próxima tarefa a ser executada
+ * \return ponteiro para a próxima tarefa
+ */
 task_t *scheduler() {
     if (ready_tasks == NULL && sleeping_tasks == NULL)
         return NULL;
-
-    // check_sleeping_tasks();
 
     return find_task_by_prio(ready_tasks);
 }
 
 /*!
-    \brief Despachante do sistema operacional. Realiza as trocas de contexto.
+ * \brief Despachante do sistema operacional. Realiza as trocas de contexto.
 */
 void dispatcher_body() {
     task_t *next_task;
@@ -149,10 +155,10 @@ void dispatcher_body() {
         next_task = scheduler();
 
         if (next_task != NULL) {
-            printf("next_task: %d", next_task->id);
-            // // remove a tarefa da fila de prontas e a executa
-            // if (next_task->id != 0)
-            //     queue_remove((queue_t **)&ready_tasks, (queue_t *)next_task);
+
+            // #ifdef DEBUG
+            //             printf("\033[1;30m next_task: ID %d\033[0m\n", next_task->id);
+            // #endif
 
             task_switch(next_task);
             // verifica o status da tarefa
@@ -167,21 +173,16 @@ void dispatcher_body() {
         }
         check_sleeping_tasks();
     }
-    printf("exit dispatcher\n");
     task_exit(0);
 }
 
 /*!
-    \brief Tratador do sinal de timer
+ * \brief Tratador do sinal de timer
 */
 static void quantum_handler() {
     current_task->quantum--;
     current_task->processor_time++;
     quantum_ticks++;
-
-    // #ifdef DEBUG
-    //     printf("\033[0;32mID: %d | QT: %d \033[0m \n\n", task_id(), current_task->quantum);
-    // #endif
 
     if (current_task->quantum <= 0 && current_task->type == USER) {
         current_task->quantum = QUANTUM;
@@ -190,7 +191,7 @@ static void quantum_handler() {
 }
 
 /*!
-    \brief Inicializa a tarefa main;
+ * \brief Inicializa a tarefa main;
 */
 void main_setup() {
     main_task.id = t_id;
@@ -206,7 +207,7 @@ void main_setup() {
 }
 
 /*!
-    \brief Inicializa o sistema operacional;
+ * \brief Inicializa o sistema operacional;
     deve ser chamada no inicio do main()
 */
 void ppos_init() {
@@ -221,7 +222,7 @@ void ppos_init() {
     action.sa_flags = 0;
 
     if (sigaction(SIGALRM, &action, 0) < 0) {
-        perror("\033[0;31m ### ERROR in sigaction: \033[0m");
+        perror("\033[0;31m ### ERROR in sigaction: \033[0m\n");
         exit(1);
     }
 
@@ -233,7 +234,7 @@ void ppos_init() {
 
     // arma o temporizador ITIMER_REAL
     if (setitimer(ITIMER_REAL, &timer, 0) < 0) {
-        perror("\033[0;31m ### ERROR in  setitimer: \033[0m");
+        perror("\033[0;31m ### ERROR in  setitimer: \033[0m\n");
         exit(1);
     }
 
@@ -241,8 +242,7 @@ void ppos_init() {
 
 #ifdef DEBUG
     printf("\033[0;32m Inicializa Main \033[0;m\n");
-    queue_print("\033[0;32m Prontas \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
-    printf("\033[0;m");
+    print_task_queues();
 #endif
 
     // inicializa o dispatcher
@@ -251,8 +251,6 @@ void ppos_init() {
 
     user_tasks_count = 1;
 }
-
-// gerência de tarefas =========================================================
 
 /*!
  * \brief Inicializa uma nova tarefa
@@ -263,14 +261,14 @@ void ppos_init() {
  */
 int task_init(task_t *task, void (*start_func)(void *), void *arg) {
     if (task == NULL) {
-        fprintf(stderr, "### ERROR task_init: task nula\n");
+        fprintf(stderr, "\033[0;31m ### ERROR task_init: task is NULL \033[0m\n");
         return -1;
     }
 
-    // if (start_func == NULL) {
-    //     fprintf(stderr, "### ERROR task_init: start_function nula\n");
-    //     return -2;
-    // }
+    if (start_func == NULL) {
+        fprintf(stderr, "\033[0;31m ### ERROR task_init: start_function is NULL \033[0m\n");
+        return -2;
+    }
 
     // salva o contexto da tarefa atual
     getcontext(&task->context);
@@ -280,7 +278,7 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg) {
     char *stack;
     stack = malloc(STACKSIZE);
     if (stack == NULL) {
-        fprintf(stderr, "### ERROR task_init: pilha não alocada\n");
+        fprintf(stderr, "\033[0;31m ### ERROR task_init: could not allocate stack \033[0m\n");
 
         return -3;
     }
@@ -313,14 +311,13 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg) {
     }
 
 #ifdef DEBUG
-    printf("\033[0;32mtask_init: iniciada tarefa %d \033[0m \n\n", task->id);
+    printf("\033[0;32m task_init: ID %d \033[0m \n", task->id);
 #endif
 
     user_tasks_count++;
 
 #ifdef DEBUG
-    queue_print("\033[0;32m Ready \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
-    printf("\033[0;m");
+    print_task_queues();
 #endif
 
     return t_id;
@@ -345,10 +342,7 @@ void task_exit(int exit_code) {
     printf("Task %d exit: execution time %d ms, processor time  %d ms, %d activations\n", task_id(), current_task->execution_time, current_task->processor_time, current_task->activations);
 
 #ifdef DEBUG
-    queue_print("\033[0;32m Prontas \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
-    printf("\033[0;m");
-    queue_print("\033[0;32m Suspensas \033[0;34m \n", (queue_t *)current_task->wait_queue, print_elem);
-    printf("\033[0;m");
+
 #endif
 
     current_task->status = TERMINATED;
@@ -356,7 +350,9 @@ void task_exit(int exit_code) {
 
     task_t *aux_task;
     while ((aux_task = current_task->wait_queue)) {
-        printf("resume: task-id %d", aux_task->id);
+#ifdef DEBUG
+        printf("task_resume: resume: %d", aux_task->id);
+#endif
         task_resume(aux_task, &current_task->wait_queue);
     }
 
@@ -366,8 +362,6 @@ void task_exit(int exit_code) {
         return;
     } // verifica se a task atual é a main (id = 0)
     else {
-
-        printf("yield\n");
         task_yield();
     }
 }
@@ -437,7 +431,7 @@ int task_getprio(task_t *task) {
  */
 void task_suspend(task_t **queue) {
 #ifdef DEBUG
-    printf("\033[1;36mTask %d suspended\033[0m\n", current_task->id);
+    printf("\033[1;36m task_suspend: ID %d \033[0m\n", current_task->id);
 #endif
 
     task_t *aux_task = current_task;
@@ -461,10 +455,7 @@ void task_suspend(task_t **queue) {
     }
 
 #ifdef DEBUG
-    queue_print("\033[0;32m Ready \033[0;34m \n", (queue_t *)ready_tasks, print_elem);
-    printf("\033[0;m");
-    queue_print("\033[0;32m Sleeping \033[0;34m \n", (queue_t *)sleeping_tasks, print_elem);
-    printf("\033[0;m");
+    print_task_queues();
 #endif
 
     task_yield();
@@ -477,11 +468,19 @@ void task_suspend(task_t **queue) {
  */
 void task_resume(task_t *task, task_t **queue) {
 #ifdef DEBUG
-    printf("\033[0;36m task_resume: resuming %d\n \033[0m", task->id);
+    printf("\033[0;36m task_resume: ID %d\n \033[0m", task->id);
 #endif
 
-    queue_remove((queue_t **)queue, (queue_t *)task);
-    queue_append((queue_t **)&ready_tasks, (queue_t *)task);
+    if (queue_remove((queue_t **)queue, (queue_t *)task) < 0) {
+        fprintf(stderr, "\033[0;31m ### ERROR task_resume: task %d \033[0m\n", task->id);
+        return;
+    }
+
+    if (queue_append((queue_t **)&ready_tasks, (queue_t *)task) < 0) {
+        fprintf(stderr, "\033[0;31m ### ERROR task_resume: task %d could not be appended to ready queue \033[0m\n", task->id);
+        return;
+    }
+
     task->status = READY;
 }
 
@@ -491,10 +490,8 @@ void task_resume(task_t *task, task_t **queue) {
     \return 0 se sucesso, < 0 se erro
 */
 int task_wait(task_t *task) {
-    if (task == NULL || task->status == TERMINATED) {
-        fprintf(stderr, "\033[0;31m ### ERROR task_wait: task is NULL \033[0m \n");
+    if (task == NULL || task->status == TERMINATED)
         return -1;
-    }
 
     task_suspend(&task->wait_queue);
 
