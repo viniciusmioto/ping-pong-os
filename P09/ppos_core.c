@@ -144,7 +144,7 @@ task_t *scheduler() {
 
 /*!
  * \brief Despachante do sistema operacional. Realiza as trocas de contexto.
-*/
+ */
 void dispatcher_body() {
     task_t *next_task;
 
@@ -178,7 +178,7 @@ void dispatcher_body() {
 
 /*!
  * \brief Tratador do sinal de timer
-*/
+ */
 static void quantum_handler() {
     current_task->quantum--;
     current_task->processor_time++;
@@ -192,7 +192,7 @@ static void quantum_handler() {
 
 /*!
  * \brief Inicializa a tarefa main;
-*/
+ */
 void main_setup() {
     main_task.id = t_id;
     main_task.prev = NULL;
@@ -207,8 +207,7 @@ void main_setup() {
 }
 
 /*!
- * \brief Inicializa o sistema operacional;
-    deve ser chamada no inicio do main()
+ * \brief Inicializa o sistema operacional; deve ser chamada no inicio do main()
 */
 void ppos_init() {
     // desativa o buffer da saida padrao (stdout), usado pela função printf
@@ -324,18 +323,17 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg) {
 }
 
 /*!
-    \brief Identificador da tarefa corrente (main deve ser 0)
-    \return ID da tarefa corrente
-*/
+ * \brief Identificador da tarefa corrente (main deve ser 0)
+ * \return ID da tarefa corrente
+ */
 int task_id() {
     return current_task ? current_task->id : 0;
 }
 
 /*!
-    \brief Termina a tarefa corrente, indicando um
-    valor de status encerramento
-    \param exit_code (int) valor de status de encerramento
-*/
+ * \brief Termina a tarefa corrente, indicando um valor de status encerramento
+ * \param exit_code (int) valor de status de encerramento
+ */
 void task_exit(int exit_code) {
     current_task->execution_time = quantum_ticks - current_task->execution_time;
 
@@ -367,10 +365,10 @@ void task_exit(int exit_code) {
 }
 
 /*!
-    \brief Alterna a execução para a tarefa indicada
-    \param task descritor da tarefa a ser ativada
-    \return 0 se sucesso, < 0 se erro
-*/
+ * \brief Alterna a execução para a tarefa indicada
+ * \param task descritor da tarefa a ser ativada
+ * \return 0 se sucesso, < 0 se erro
+ */
 int task_switch(task_t *task) {
     if (task == NULL) {
         fprintf(stderr, "\033[0;31m ### ERROR task_switch: task selecionada está nula \033[0m\n");
@@ -400,27 +398,27 @@ int task_switch(task_t *task) {
 // operações de escalonamento ==================================================
 
 /*!
-    \brief A tarefa atual libera o processador para outra tarefa
-*/
+ * \brief A tarefa atual libera o processador para outra tarefa
+ */
 void task_yield() {
     task_switch(&dispatcher);
 }
 
 /*!
-    \brief Define a prioridade estática de uma tarefa (ou a tarefa atual)
-    \param task descritor da tarefa
-    \param prio nova prioridade estática da tarefa
-*/
+ * \brief Define a prioridade estática de uma tarefa (ou a tarefa atual)
+ * \param task descritor da tarefa
+ * \param prio nova prioridade estática da tarefa
+ */
 void task_setprio(task_t *task, int prio) {
     task->dynamic_prio = prio;
     task->static_prio = prio;
 }
 
 /*!
-    \brief Obtém prioridade estática de uma tarefa (ou a tarefa atual)
-    \param task descritor da tarefa
-    \return prioridade estática da tarefa
-*/
+ * \brief Obtém prioridade estática de uma tarefa (ou a tarefa atual)
+ * \param task descritor da tarefa
+ * \return prioridade estática da tarefa
+ */
 int task_getprio(task_t *task) {
     return task != NULL ? task->dynamic_prio : current_task->dynamic_prio;
 }
@@ -485,10 +483,10 @@ void task_resume(task_t *task, task_t **queue) {
 }
 
 /*!
-    \brief Suspende a tarefa atual para esperar a conclusão de uma tarefa específica
-    \param task descritor da tarefa que deve ser aguardada
-    \return 0 se sucesso, < 0 se erro
-*/
+ * \brief Suspende a tarefa atual para esperar a conclusão de uma tarefa específica
+ * \param task descritor da tarefa que deve ser aguardada
+ * \return 0 se sucesso, < 0 se erro
+ */
 int task_wait(task_t *task) {
     if (task == NULL || task->status == TERMINATED)
         return -1;
