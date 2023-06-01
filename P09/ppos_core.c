@@ -29,20 +29,6 @@ unsigned int systime() {
 long user_tasks_count;
 
 /*!
- * \brief Verifica se há tarefas dormindo que devem ser acordadas
- */
-void check_sleeping_tasks() {
-    task_t *aux_task;
-    while ((aux_task = sleeping_tasks)) {
-        if (aux_task->wake_up_time <= systime()) {
-            task_resume(aux_task, &sleeping_tasks);
-        } else {
-            break;
-        }
-    }
-}
-
-/*!
     \brief Imprime o elemento de uma fila
     \param ptr ponteiro para o elemento
 */
@@ -55,6 +41,33 @@ void print_elem(void *ptr) {
     elem->prev ? printf("%d", (elem->prev)->id) : printf("*");
     printf("<%d>", elem->id);
     elem->next ? printf("%d", (elem->next)->id) : printf("*");
+}
+
+/*!
+ * \brief Verifica se há tarefas dormindo que devem ser acordadas
+ */
+void check_sleeping_tasks() {
+    if (sleeping_tasks == NULL) {
+        printf("sleeping_tasks is NULL\n");
+        return;
+    }
+
+    task_t *aux_task = sleeping_tasks, *next_task;
+
+    unsigned int now = systime();
+    do {
+        // save the next task cause the current task could be removed from the
+        // queue
+        next_task = aux_task->next;
+
+        if (aux_task->wake_up_time <= now) {
+            aux_task->wake_up_time = 0;
+            task_resume((task_t *)aux_task, (task_t **)&sleeping_tasks);
+        }
+
+        // atualize the current task
+        aux_task = next_task;
+    } while (sleeping_tasks && next_task != sleeping_tasks);
 }
 
 /*!
@@ -115,8 +128,10 @@ task_t *find_task_by_prio(task_t *queue) {
     \return ponteiro para a próxima tarefa
 */
 task_t *scheduler() {
-    if (ready_tasks == NULL)
+    if (ready_tasks == NULL && sleeping_tasks == NULL)
         return NULL;
+
+    // check_sleeping_tasks();
 
     return find_task_by_prio(ready_tasks);
 }
@@ -127,36 +142,37 @@ task_t *scheduler() {
 void dispatcher_body() {
     task_t *next_task;
 
-    check_sleeping_tasks();
-
     // enaquanto houver tarefa de usuário
-    while (user_tasks_count > 0) {
+    while (queue_size((queue_t *)sleeping_tasks) > 0 ||
+           queue_size((queue_t *)ready_tasks) > 0) {
         // próxima tarefa decidida pelo scheduler
         next_task = scheduler();
 
-        if (next_task == NULL)
-            return;
+        if (next_task != NULL) {
 
-        next_task->status = RUNNING;
-        current_task->status = READY;
+            next_task->status = RUNNING;
+            current_task->status = READY;
 
-        // remove a tarefa da fila de prontas e a executa
-        if (next_task->id != 0)
-            queue_remove((queue_t **)&ready_tasks, (queue_t *)next_task);
+            // // remove a tarefa da fila de prontas e a executa
+            // if (next_task->id != 0)
+            //     queue_remove((queue_t **)&ready_tasks, (queue_t *)next_task);
 
-        task_switch(next_task);
+            task_switch(next_task);
 
-        // verifica o status da tarefa
-        switch (next_task->status) {
-        case READY:
-            queue_append((queue_t **)&ready_tasks, (queue_t *)next_task);
-            break;
-        case TERMINATED:
-            free(next_task->context.uc_stack.ss_sp);
-            break;
-        default:
-            break;
+            // verifica o status da tarefa
+            switch (next_task->status) {
+            case READY:
+                queue_append((queue_t **)&ready_tasks, (queue_t *)next_task);
+                break;
+            case TERMINATED:
+                free(next_task->context.uc_stack.ss_sp);
+                break;
+            default:
+                break;
+            }
         }
+
+        check_sleeping_tasks();
     }
 
     task_exit(0);
@@ -427,8 +443,9 @@ int task_getprio(task_t *task) {
  */
 void task_suspend(task_t **queue) {
     task_t *aux_task = current_task;
-    printf("\033[1;35mTask %d suspended\n", aux_task->id);
-
+#ifdef DEBUG
+    printf("\033[1;36mTask %d suspended\033[0m\n", aux_task->id);
+#endif
     // verifica se não é o dispatcher
     if (aux_task->id == 1) {
         fprintf(stderr, "\033[0;31m ### ERROR task_suspend: dispatcher cannot be suspended \033[0m \n");
@@ -437,14 +454,14 @@ void task_suspend(task_t **queue) {
 
     if (queue_remove((queue_t **)&ready_tasks, (queue_t *)aux_task) < 0) {
         fprintf(stderr, "\033[0;31m ### ERROR task_suspend: task %d not in ready queue \033[0m\n", aux_task->id);
-
-        // return;
+        return;
     }
+
     aux_task->status = SUSPENDED;
 
     if (queue_append((queue_t **)queue, (queue_t *)aux_task) < 0) {
         fprintf(stderr, "\033[0;31m ### ERROR task_suspend: task could not be appended to suspended queue\033[0m\n");
-        // return;
+        return;
     }
 
 #ifdef DEBUG
