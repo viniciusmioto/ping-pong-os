@@ -3,10 +3,11 @@
 #include "ppos.h" // estruturas de dados necessárias
 
 // tarefas do sistema operacional ----------
-task_t *current_task; // ponteiro para a tarefa atual
-task_t main_task;     // tarefa main
-task_t dispatcher;    // tarefa dispatcher
-task_t *ready_tasks;  // fila de tarefas prontas
+task_t *current_task;  // ponteiro para a tarefa atual
+task_t main_task;      // tarefa main
+task_t dispatcher;     // tarefa dispatcher
+task_t *ready_tasks;   // fila de tarefas prontas
+task_t *waiting_tasks; // fila de tarefas esperando por outra tarefa
 
 // temporizador ----------
 #define QUANTUM 20 // quantum em milisegundos
@@ -278,7 +279,7 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg) {
     task->activations = 0;
     task->processor_time = 0;
     task->execution_time = quantum_ticks;
-    task->wait_queue = NULL;
+    task->waiting_for_id = 0;
 
     // verifica se não é o dispatcher
     if (task->id != 1) {
@@ -308,6 +309,26 @@ int task_id() {
     return current_task ? current_task->id : 0;
 }
 
+void check_waiting_tasks() {
+    if (waiting_tasks == NULL)
+        return;
+
+    task_t *aux_task = waiting_tasks;
+    task_t *next_task = NULL;
+
+    do {
+        next_task = aux_task->next;
+
+        if (aux_task->waiting_for_id == current_task->id) {
+            queue_remove((queue_t **)&waiting_tasks, (queue_t *)aux_task);
+            queue_append((queue_t **)&ready_tasks, (queue_t *)aux_task);
+            aux_task->status = READY;
+        }
+
+        aux_task = next_task;
+    } while (aux_task != waiting_tasks);
+}
+
 /*!
     \brief Termina a tarefa corrente, indicando um
     valor de status encerramento
@@ -328,18 +349,15 @@ void task_exit(int exit_code) {
     current_task->status = TERMINATED;
     user_tasks_count--;
 
-    task_t *aux_task;
-    while ((aux_task = current_task->wait_queue)) {
-        task_resume(aux_task, &current_task->wait_queue);
-    }
+    // verifica se existem tarefas esperando por essa
+    check_waiting_tasks();
 
     // verifica se tarefa atual é o dispatcher (id = 1)
     if (current_task->id == 1) {
         task_switch(&main_task);
         return;
     } // verifica se a task atual é a main (id = 0)
-    else if (exit_code == 0)
-        task_yield();
+    task_yield();
 }
 
 /*!
@@ -362,9 +380,9 @@ int task_switch(task_t *task) {
     task_t *aux_current_task = current_task;
     current_task = task;
 
-// #ifdef DEBUG
-//     printf("\033[0;32mtask_switch: trocando contexto %d -> %d \033[0m \n\n", aux_current_task->id, task->id);
-// #endif
+    // #ifdef DEBUG
+    //     printf("\033[0;32mtask_switch: trocando contexto %d -> %d \033[0m \n\n", aux_current_task->id, task->id);
+    // #endif
 
     task->activations++;
 
@@ -456,7 +474,7 @@ int task_wait(task_t *task) {
         return -1;
     }
 
-    task_suspend(&task->wait_queue);
+    task_suspend(&waiting_tasks);
 
     return task->id;
 }

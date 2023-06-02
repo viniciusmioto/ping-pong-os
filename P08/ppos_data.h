@@ -43,9 +43,9 @@ typedef struct task_t {
     unsigned int activations;    // número de ativações da tarefa
     unsigned int processor_time; // tempo de processador consumido pela tarefa
     unsigned int execution_time; // tempo de vida da tarefa
-    struct task_t *wait_queue;  // fila de tarefas que estão esperando a tarefa atual
+    unsigned int waiting_for_id;    // fila de tarefas que estão esperando a tarefa atual
 
-                                 // ... (outros campos serão adicionados mais tarde)
+    // ... (outros campos serão adicionados mais tarde)
 } task_t;
 
 // estrutura que define um semáforo
