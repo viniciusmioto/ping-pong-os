@@ -599,3 +599,125 @@ int sem_destroy(semaphore_t *s) {
     return 0;
 }
 
+/*!
+ * \brief Inicializa fila de mensagens
+ * \param queue ponteiro para a fila de mensagens
+ * \param max_msgs número máximo de mensagens
+ * \param msg_size tamanho máximo de cada mensagem 
+ * \return 0 se sucesso, < 0 se erro
+*/
+int mqueue_init(mqueue_t *queue, int max_msgs, int msg_size) {
+    if (queue == NULL) {
+        fprintf(stderr, "\033[0;35m ### ERROR mqueue_init: queue is null \033[0m\n");
+        return -1;
+    }
+
+    queue->msg_size = msg_size;
+    queue->itens_queue = NULL;
+
+    queue->s_spot = malloc(sizeof(semaphore_t));
+    queue->s_itens = malloc(sizeof(semaphore_t));
+    queue->s_box = malloc(sizeof(semaphore_t));
+
+    if (sem_init(queue->s_spot, max_msgs - 1))
+        return -1;
+    if (sem_init(queue->s_itens, 0))
+        return -1;
+    if (sem_init(queue->s_box, 1))
+        return -1;
+
+    return 0;
+}
+
+/*!
+ * \brief Envia uma mensagem para a fila de mensagens
+ * \param queue ponteiro para a fila de mensagens
+ * \param msg ponteiro para a mensagem
+ * \return 0 se sucesso, < 0 se erro
+*/
+int mqueue_send(mqueue_t *queue, void *msg) {
+    if (sem_down(queue->s_spot))
+        return -1;
+    if (sem_down(queue->s_box))
+        return -1;
+
+    mitem_t *item = malloc(sizeof(mitem_t));
+    item->msg = malloc(queue->msg_size);
+
+    if (!item)
+        return -1;
+    if (!(item->msg))
+        return -1;
+
+    memcpy(item->msg, msg, queue->msg_size);
+
+    if (queue_append((queue_t **)&queue->itens_queue, (queue_t *)item))
+        return -1;
+
+    if (sem_up(queue->s_box))
+        return -1;
+    if (sem_up(queue->s_itens))
+        return -1;
+
+    return 0;
+}
+
+/*!
+ * \brief Recebe uma mensagem da fila de mensagens
+ * \param queue ponteiro para a fila de mensagens
+ * \param msg ponteiro para a mensagem
+ * \return 0 se sucesso, < 0 se erro
+*/
+int mqueue_recv(mqueue_t *queue, void *msg) {
+    if (sem_down(queue->s_itens))
+        return -1;
+    if (sem_down(queue->s_box))
+        return -1;
+
+    memcpy(msg, queue->itens_queue->msg, queue->msg_size);
+
+    if (queue_remove((queue_t **)&queue->itens_queue, (queue_t *)queue->itens_queue))
+        return -1;
+
+    if (sem_up(queue->s_box))
+        return -1;
+    if (sem_up(queue->s_spot))
+        return -1;
+
+    return 0;
+}
+
+/*!
+ * \brief Destrói uma fila de mensagens
+ * \param queue ponteiro para a fila de mensagens
+ * \return 0 se sucesso, < 0 se erro
+*/
+int mqueue_destroy(mqueue_t *queue) {
+    while (mqueue_msgs(queue) > 0) {
+        if (queue_remove((queue_t **)&queue->itens_queue, (queue_t *)queue->itens_queue))
+            return -1;
+    }
+
+    if (sem_destroy(queue->s_itens))
+        return -1; // tenta destruir sempre mais de uma vez, testar sem->existe
+    if (sem_destroy(queue->s_spot))
+        return -1;
+    if (sem_destroy(queue->s_box))
+        return -1;
+
+    return 0;
+}
+
+/*!
+ * \brief Retorna o número de mensagens na fila de mensagens
+ * \param queue ponteiro para a fila de mensagens
+ * \return número de mensagens na fila de mensagens
+*/
+int mqueue_msgs(mqueue_t *queue) {
+    int size = queue_size((queue_t *)queue->itens_queue);
+
+    if (size == 1 && !(queue->itens_queue))
+        return 0;
+
+    return size;
+}
