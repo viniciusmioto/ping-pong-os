@@ -150,11 +150,6 @@ void dispatcher_body() {
         next_task = scheduler();
 
         if (next_task != NULL) {
-
-            // #ifdef DEBUG
-            //             printf("\033[1;30m next_task: ID %d\033[0m\n", next_task->id);
-            // #endif
-
             task_switch(next_task);
             // verifica o status da tarefa
             switch (next_task->status) {
@@ -306,13 +301,11 @@ int task_init(task_t *task, void (*start_func)(void *), void *arg) {
 
 #ifdef DEBUG
     printf("\033[0;32m task_init: ID %d \033[0m \n", task->id);
+
+    print_task_queues();
 #endif
 
     user_tasks_count++;
-
-#ifdef DEBUG
-    print_task_queues();
-#endif
 
     return t_id;
 }
@@ -431,7 +424,7 @@ void task_suspend(task_t **queue) {
     aux_task->status = SUSPENDED;
 
     if (queue_append((queue_t **)queue, (queue_t *)aux_task) < 0) {
-        fprintf(stderr, "\033[0;35m ### ERROR task_suspend: task could not be appended to suspended queue\033[0m\n");
+        fprintf(stderr, "\033[0;35m ### ERROR task_suspend: task could not be appended to suspended tasks queue\033[0m\n");
         return;
     }
 
@@ -473,7 +466,7 @@ void task_resume(task_t *task, task_t **queue) {
 int task_wait(task_t *task) {
 
 #ifdef DEBUG
-    printf("\033[1;30m task_wait: TAREFA %d aguarda tarefa %d\n\033[0m", current_task->id, task->id);
+    printf("\033[0;31m task_wait: TAREFA %d aguarda tarefa %d\n\033[0m", current_task->id, task->id);
 #endif
 
     if (task == NULL || task->status == TERMINATED)
