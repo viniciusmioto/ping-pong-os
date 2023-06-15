@@ -98,18 +98,18 @@ task_t *find_task_by_prio(task_t *queue) {
         if (aux->dynamic_prio < max_prio_task->dynamic_prio)
             max_prio_task = aux;
 
-        // // empate de prioridade dinâmica
-        // if (aux->dynamic_prio == max_prio_task->dynamic_prio) {
-        //     // maior prioridade estática
-        //     if (aux->static_prio < max_prio_task->static_prio)
-        //         max_prio_task = aux;
+        // empate de prioridade dinâmica
+        if (aux->dynamic_prio == max_prio_task->dynamic_prio) {
+            // maior prioridade estática
+            if (aux->static_prio < max_prio_task->static_prio)
+                max_prio_task = aux;
 
-        //     // empate de prioridade estática
-        //     if (aux->static_prio == max_prio_task->static_prio)
-        //         // menor id
-        //         if (aux->id < max_prio_task->id)
-        //             max_prio_task = aux;
-        // }
+            // empate de prioridade estática
+            if (aux->static_prio == max_prio_task->static_prio)
+                // menor id
+                if (aux->id < max_prio_task->id)
+                    max_prio_task = aux;
+        }
     }
 
     // reajusta a prioridades dinâmicas (aging)
@@ -235,7 +235,7 @@ void ppos_init() {
     queue_append((queue_t **)&ready_tasks, (queue_t *)&main_task);
 
 #ifdef DEBUG
-    printf("\033[0;32m Inicializa Main \033[0;m\n");
+    printf("\033[0;32m Inicializa Main ID: %d\033[0;m\n", main_task.id);
     print_task_queues();
 #endif
 
@@ -334,20 +334,12 @@ void task_exit(int exit_code) {
 
     printf("Task %d exit: execution time %d ms, processor time  %d ms, %d activations\n", task_id(), current_task->execution_time, current_task->processor_time, current_task->activations);
 
-#ifdef DEBUG
-
-#endif
-
     current_task->status = TERMINATED;
     user_tasks_count--;
 
     task_t *aux_task;
-    while ((aux_task = current_task->wait_queue)) {
-#ifdef DEBUG
-        printf("task_resume: resume: %d", aux_task->id);
-#endif
+    while ((aux_task = current_task->wait_queue))
         task_resume(aux_task, &current_task->wait_queue);
-    }
 
     // verifica se tarefa atual é o dispatcher (id = 1)
     if (current_task->id == 1) {
@@ -378,10 +370,6 @@ int task_switch(task_t *task) {
 
     task_t *aux_current_task = current_task;
     current_task = task;
-
-    // #ifdef DEBUG
-    //     printf("\033[0;32mtask_switch: trocando contexto %d -> %d \033[0m \n\n", aux_current_task->id, task->id);
-    // #endif
 
     task->activations++;
 
@@ -483,6 +471,11 @@ void task_resume(task_t *task, task_t **queue) {
  * \return 0 se sucesso, < 0 se erro
  */
 int task_wait(task_t *task) {
+
+#ifdef DEBUG
+    printf("\033[1;31m task_join: TAREFA %d aguarda tarefa %d\n\033[0m", current_task->id, task->id);
+#endif
+
     if (task == NULL || task->status == TERMINATED)
         return -1;
 
@@ -545,37 +538,22 @@ int sem_down(semaphore_t *s) {
 
     if (s == NULL) {
         fprintf(stderr, "\033[0;31m ### ERROR sem_down: semaphore is null \033[0m\n");
-        leave_cs(&lock);
         return -1;
     }
 
 #ifdef DEBUG
-    printf("\033[1;36m sem_down: IN %d \033[0m\n", s->count);
+    printf("\033[1;36m sem_down: task %d \033[0m\n", current_task->id);
 #endif
-
-    enter_cs(&(lock));
-    int count = s->count;
-    leave_cs(&lock);
-
-    if (count < 0) 
-        task_suspend(&(s->queue));
-    
 
     enter_cs(&lock);
+
     s->count--;
+    int count = s->count;
 
-    if (s == NULL) // semaforo foi destruido
-    {
-        fprintf(stderr, "\033[0;31m ### ERROR sem_down: semaphore loss! \033[0m\n");
-        leave_cs(&lock);
-        return -1;
-    }
+    leave_cs(&lock);
 
-    leave_cs(&(lock));
-
-#ifdef DEBUG
-    printf("\033[1;36m sem_down: OUT %d \033[0m\n", s->count);
-#endif
+    if (count < 0)
+        task_suspend(&s->queue);
 
     return 0;
 }
@@ -587,10 +565,6 @@ int sem_down(semaphore_t *s) {
  */
 int sem_up(semaphore_t *s) {
 
-#ifdef DEBUG
-    printf("\033[1;36m sem_up: IN %d \033[0m\n", s->count);
-#endif
-
     if (s == NULL) {
         fprintf(stderr, "\033[0;31m ### ERROR sem_up: semaphore is null \033[0m\n");
         return -1;
@@ -599,18 +573,18 @@ int sem_up(semaphore_t *s) {
     if (s->queue == NULL)
         return -1;
 
-    enter_cs(&(lock));
+#ifdef DEBUG
+    printf("\033[1;36m sem_up: task %d \033[0m\n", current_task->id);
+#endif
+
+    enter_cs(&lock);
 
     s->count++;
 
     if (s->count <= 0)
         task_resume(s->queue, &s->queue);
 
-    leave_cs(&(lock));
-
-#ifdef DEBUG
-    printf("\033[1;36m sem_up: OUT %d \033[0m\n", s->count);
-#endif
+    leave_cs(&lock);
 
     return 0;
 }
