@@ -12,17 +12,16 @@ task_t *sleeping_tasks; // fila de tarefas adormecidas
 // temporizador ----------
 #define QUANTUM 20 // quantum em milisegundos
 
-struct sigaction action; // tratador de sinal
-
-struct itimerval timer; // inicialização do timer
-
+struct sigaction action;        // tratador de sinal
+struct itimerval timer;         // inicialização do timer
 unsigned int quantum_ticks = 0; // contador de ticks
 
 int t_id = 0; // id da tarefa atual
 
-// contador de tarefas do usuário, não inclui o dispatcher
-// será usado para o scheduler
+// contador de tarefas do usuário, não inclui o dispatcher, usado para o scheduler
 long user_tasks_count;
+
+int lock = 0; // variável para controle de seções críticas (semáforos)
 
 unsigned int systime() {
     return quantum_ticks;
@@ -57,12 +56,8 @@ void print_task_queues() {
  * \brief Verifica se há tarefas dormindo que devem ser acordadas
  */
 void check_sleeping_tasks() {
-    if (sleeping_tasks == NULL) {
-#ifdef DEBUG
-        printf("\033[0;30m sleeping_tasks is NULL\033[0m\n");
-#endif
+    if (sleeping_tasks == NULL)
         return;
-    }
 
     task_t *aux_task = sleeping_tasks, *next_task;
 
@@ -103,18 +98,18 @@ task_t *find_task_by_prio(task_t *queue) {
         if (aux->dynamic_prio < max_prio_task->dynamic_prio)
             max_prio_task = aux;
 
-        // empate de prioridade dinâmica
-        if (aux->dynamic_prio == max_prio_task->dynamic_prio) {
-            // maior prioridade estática
-            if (aux->static_prio < max_prio_task->static_prio)
-                max_prio_task = aux;
+        // // empate de prioridade dinâmica
+        // if (aux->dynamic_prio == max_prio_task->dynamic_prio) {
+        //     // maior prioridade estática
+        //     if (aux->static_prio < max_prio_task->static_prio)
+        //         max_prio_task = aux;
 
-            // empate de prioridade estática
-            if (aux->static_prio == max_prio_task->static_prio)
-                // menor id
-                if (aux->id < max_prio_task->id)
-                    max_prio_task = aux;
-        }
+        //     // empate de prioridade estática
+        //     if (aux->static_prio == max_prio_task->static_prio)
+        //         // menor id
+        //         if (aux->id < max_prio_task->id)
+        //             max_prio_task = aux;
+        // }
     }
 
     // reajusta a prioridades dinâmicas (aging)
@@ -429,7 +424,7 @@ int task_getprio(task_t *task) {
  */
 void task_suspend(task_t **queue) {
 #ifdef DEBUG
-    printf("\033[1;36m task_suspend: ID %d \033[0m\n", current_task->id);
+    printf("\033[0;36m task_suspend: ID %d \033[0m\n", current_task->id);
 #endif
 
     task_t *aux_task = current_task;
@@ -466,7 +461,7 @@ void task_suspend(task_t **queue) {
  */
 void task_resume(task_t *task, task_t **queue) {
 #ifdef DEBUG
-    printf("\033[0;36m task_resume: ID %d\n \033[0m", task->id);
+    printf("\033[0;36m task_resume: ID %d\n\033[0m", task->id);
 #endif
 
     if (queue_remove((queue_t **)queue, (queue_t *)task) < 0) {
@@ -504,4 +499,135 @@ void task_sleep(int t) {
     task_t *aux_task = current_task;
     aux_task->wake_up_time = systime() + t;
     task_suspend(&sleeping_tasks);
+}
+
+/*!
+ * \brief Entra em uma seção crítica
+ * \param lock ponteiro para a tranca (lock)
+ */
+void enter_cs(int *lock) {
+    while (__sync_fetch_and_or(lock, 1))
+        ;
+}
+
+/*!
+ * \brief Sai de uma seção crítica
+ * \param lock ponteiro para a tranca (lock)
+ */
+void leave_cs(int *lock) {
+    (*lock) = 0;
+}
+
+/*!
+ * \brief Inicializa um semáforo
+ * \param s ponteiro para o semáforo
+ * \param value valor inicial do semáforo
+ * \return 0 se sucesso, < 0 se erro
+ */
+int sem_init(semaphore_t *s, int value) {
+    if (s == NULL) {
+        fprintf(stderr, "\033[0;31m ### ERROR sem_init: semaphore is null \033[0m\n");
+        return -1;
+    }
+
+    s->count = value;
+    s->queue = NULL;
+
+    return 0;
+}
+
+/*!
+ * \brief Operação DOWN em um semáforo
+ * \param s ponteiro para o semáforo
+ * \return 0 se sucesso, < 0 se erro
+ */
+int sem_down(semaphore_t *s) {
+
+    if (s == NULL) {
+        fprintf(stderr, "\033[0;31m ### ERROR sem_down: semaphore is null \033[0m\n");
+        leave_cs(&lock);
+        return -1;
+    }
+
+#ifdef DEBUG
+    printf("\033[1;36m sem_down: IN %d \033[0m\n", s->count);
+#endif
+
+    enter_cs(&(lock));
+    int count = s->count;
+    leave_cs(&lock);
+
+    if (count < 0) 
+        task_suspend(&(s->queue));
+    
+
+    enter_cs(&lock);
+    s->count--;
+
+    if (s == NULL) // semaforo foi destruido
+    {
+        fprintf(stderr, "\033[0;31m ### ERROR sem_down: semaphore loss! \033[0m\n");
+        leave_cs(&lock);
+        return -1;
+    }
+
+    leave_cs(&(lock));
+
+#ifdef DEBUG
+    printf("\033[1;36m sem_down: OUT %d \033[0m\n", s->count);
+#endif
+
+    return 0;
+}
+
+/*!
+ * \brief Operação UP em um semáforo
+ * \param s ponteiro para o semáforo
+ * \return 0 se sucesso, < 0 se erro
+ */
+int sem_up(semaphore_t *s) {
+
+#ifdef DEBUG
+    printf("\033[1;36m sem_up: IN %d \033[0m\n", s->count);
+#endif
+
+    if (s == NULL) {
+        fprintf(stderr, "\033[0;31m ### ERROR sem_up: semaphore is null \033[0m\n");
+        return -1;
+    }
+
+    if (s->queue == NULL)
+        return -1;
+
+    enter_cs(&(lock));
+
+    s->count++;
+
+    if (s->count <= 0)
+        task_resume(s->queue, &s->queue);
+
+    leave_cs(&(lock));
+
+#ifdef DEBUG
+    printf("\033[1;36m sem_up: OUT %d \033[0m\n", s->count);
+#endif
+
+    return 0;
+}
+
+/*!
+ * \brief Destrói um semáforo
+ * \param s ponteiro para o semáforo
+ * \return 0 se sucesso, < 0 se erro
+ */
+int sem_destroy(semaphore_t *s) {
+    if (s == NULL) {
+        fprintf(stderr, "\033[0;31m ### ERROR sem_destroy: semaphore is null \033[0m\n");
+        return -1;
+    }
+
+    while (sem_up(s) != -1)
+        ;
+
+    return 0;
 }
