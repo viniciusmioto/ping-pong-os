@@ -56,7 +56,7 @@ typedef struct task_t {
 typedef struct semaphore_t
 {
     int count;                        // quantidade de tarefas na fila
-    int destroyed;                    // indica se o semáforo foi destruído
+    int exists;                    // indica se o semáforo foi destruído
 
     task_t *queue;                    // fila de tarefas esperando no semáforo
 } semaphore_t ;
@@ -86,7 +86,7 @@ typedef struct mqueue_t
   // int capacidade ;
   int msg_size ;
   // void *msg ;
-  semaphore_t *vagas, *itens, *caixa ;
+  semaphore_t *s_spot, *s_itens, *s_box ;
   mitem_t *fila ; 
   // preencher quando necessário
 } mqueue_t ;

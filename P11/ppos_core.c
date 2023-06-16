@@ -563,9 +563,6 @@ int sem_up(semaphore_t *s) {
         return -1;
     }
 
-    if (s->queue == NULL)
-        return -1;
-
 #ifdef DEBUG
     printf("\033[1;36m sem_up: task %d \033[0m\n", current_task->id);
 #endif

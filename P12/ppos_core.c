@@ -401,10 +401,6 @@ int task_getprio(task_t *task) {
  * \param queue ponteiro para a fila de tarefas suspensas
  */
 void task_suspend(task_t **queue) {
-#ifdef DEBUG
-    printf("\033[1;31m ANTES DE SUSPENDER \033[0m\n");
-    print_task_queues();
-#endif
 
 #ifdef DEBUG
     printf("\033[0;36m task_suspend: ID %d \033[0m\n", current_task->id);
@@ -431,7 +427,6 @@ void task_suspend(task_t **queue) {
     }
 
 #ifdef DEBUG
-    printf("\033[1;31m DEPOIS DE SUSPENDER \033[0m\n");
     print_task_queues();
 #endif
 
@@ -519,6 +514,7 @@ int sem_init(semaphore_t *s, int value) {
         return -1;
     }
 
+    s->exists = 1;
     s->count = value;
     s->queue = NULL;
 
@@ -531,34 +527,24 @@ int sem_init(semaphore_t *s, int value) {
  * \return 0 se sucesso, < 0 se erro
  */
 int sem_down(semaphore_t *s) {
-    if (!s || s->destroyed)
+    if (s == NULL || !s->exists) {
+#ifdef DEBUG
+        fprintf(stderr, "\033[0;31m ### sem_down: semaphore is null \033[0m\n");
+#endif
         return -1;
-
-    // enter the critical section
-    enter_cs(&lock);
-
-    // decrement the semaphore's count
-    s->count--;
-
-    // if the semaphore's count is less than zero, suspend the current task
-    task_t *cTask = current_task;
-    if (s->count < 0) {
-        // remove the task from the ready queue
-        queue_remove((queue_t **)&ready_tasks, (queue_t *)cTask);
-
-        // set the task's status to suspended
-        cTask->status = SUSPENDED;
-
-        // append the task to the given queue
-        queue_append((queue_t **)&s->queue, (queue_t *)cTask);
     }
 
-    // leave the critical section
+#ifdef DEBUG
+    printf("\033[1;36m sem_down: task %d \033[0m\n", current_task->id);
+#endif
+
+    // seção crítica
+    enter_cs(&lock);
+    s->count--;
     leave_cs(&lock);
 
-    // pass the control to the dispatcher
-    if (cTask->status == SUSPENDED)
-        task_yield();
+    if (s->count < 0)
+        task_suspend(&s->queue);
 
     return 0;
 }
@@ -569,22 +555,24 @@ int sem_down(semaphore_t *s) {
  * \return 0 se sucesso, < 0 se erro
  */
 int sem_up(semaphore_t *s) {
-    if (!s || s->destroyed)
+    if (s == NULL || !s->exists) {
+#ifdef DEBUG
+        fprintf(stderr, "\033[0;31m ### sem_up: semaphore is null \033[0m\n");
+#endif
         return -1;
+    }
 
-    // enter the critical section
+#ifdef DEBUG
+    printf("\033[1;36m sem_up: task %d \033[0m\n", current_task->id);
+#endif
+
     enter_cs(&lock);
-
-    // increment the semaphore's count
     s->count++;
+    leave_cs(&lock);
 
-    // if there is a task suspended in the semaphore's queue, awake it and
-    // remove it from the queue
+    // se houver tarefas suspensas, acorda a primeira da fila
     if (s->count <= 0)
         task_resume((task_t *)s->queue, (task_t **)&s->queue);
-
-    // leave the critical section
-    leave_cs(&lock);
 
     return 0;
 }
@@ -595,14 +583,18 @@ int sem_up(semaphore_t *s) {
  * \return 0 se sucesso, < 0 se erro
  */
 int sem_destroy(semaphore_t *s) {
-    if (!s || s->destroyed)
+    if (s == NULL || !s->exists) {
+#ifdef DEBUG
+        fprintf(stderr, "\033[0;31m ### sem_destroy: semaphore is null \033[0m\n");
+#endif
         return -1;
+    }
 
-    // remove all tasks suspended in the semaphore's queue
+    // remove as tarefas da fila de suspensas do semáforo
     while (s->count <= 0)
         sem_up(s);
 
-    s->destroyed = 1;
+    s->exists = 0;
 
     return 0;
 }
@@ -615,16 +607,19 @@ int sem_destroy(semaphore_t *s) {
  * \return 0 se sucesso, < 0 se erro
  */
 int mqueue_init(mqueue_t *queue, int max_msgs, int msg_size) {
-    queue->msg_size   = msg_size;
+    queue->msg_size = msg_size;
     queue->fila = NULL;
 
-    queue->vagas = malloc(sizeof(semaphore_t));
-    queue->itens = malloc(sizeof(semaphore_t));
-    queue->caixa = malloc(sizeof(semaphore_t));
+    queue->s_spot = malloc(sizeof(semaphore_t));
+    queue->s_itens = malloc(sizeof(semaphore_t));
+    queue->s_box = malloc(sizeof(semaphore_t));
 
-    if(sem_init(queue->vagas, max_msgs-1)) return -1;
-    if(sem_init(queue->itens, 0)) return -1;
-    if(sem_init(queue->caixa, 1)) return -1;
+    if (sem_init(queue->s_spot, max_msgs - 1))
+        return -1;
+    if (sem_init(queue->s_itens, 0))
+        return -1;
+    if (sem_init(queue->s_box, 1))
+        return -1;
 
     return 0;
 }
@@ -635,9 +630,9 @@ int mqueue_init(mqueue_t *queue, int max_msgs, int msg_size) {
  * \return 0 se sucesso, < 0 se erro
  */
 int mqueue_send(mqueue_t *queue, void *msg) {
-    if (sem_down(queue->vagas))
+    if (sem_down(queue->s_spot))
         return -1;
-    if (sem_down(queue->caixa))
+    if (sem_down(queue->s_box))
         return -1;
 
     mitem_t *item = malloc(sizeof(mitem_t));
@@ -653,9 +648,9 @@ int mqueue_send(mqueue_t *queue, void *msg) {
     if (queue_append((queue_t **)&queue->fila, (queue_t *)item))
         return -1;
 
-    if (sem_up(queue->caixa))
+    if (sem_up(queue->s_box))
         return -1;
-    if (sem_up(queue->itens))
+    if (sem_up(queue->s_itens))
         return -1;
 
     return 0;
@@ -668,9 +663,9 @@ int mqueue_send(mqueue_t *queue, void *msg) {
  * \return 0 se sucesso, < 0 se erro
  */
 int mqueue_recv(mqueue_t *queue, void *msg) {
-    if (sem_down(queue->itens))
+    if (sem_down(queue->s_itens))
         return -1;
-    if (sem_down(queue->caixa))
+    if (sem_down(queue->s_box))
         return -1;
 
     memcpy(msg, queue->fila->msg, queue->msg_size);
@@ -678,9 +673,9 @@ int mqueue_recv(mqueue_t *queue, void *msg) {
     if (queue_remove((queue_t **)&queue->fila, (queue_t *)queue->fila))
         return -1;
 
-    if (sem_up(queue->caixa))
+    if (sem_up(queue->s_box))
         return -1;
-    if (sem_up(queue->vagas))
+    if (sem_up(queue->s_spot))
         return -1;
 
     return 0;
@@ -697,11 +692,12 @@ int mqueue_destroy(mqueue_t *queue) {
             return -1;
     }
 
-    if (sem_destroy(queue->itens))
-        return -1; // tenta destruir sempre mais de uma vez, testar sem->existe
-    if (sem_destroy(queue->vagas))
+    // destroi os semáforos
+    if (sem_destroy(queue->s_itens))
         return -1;
-    if (sem_destroy(queue->caixa))
+    if (sem_destroy(queue->s_spot))
+        return -1;
+    if (sem_destroy(queue->s_box))
         return -1;
 
     return 0;
