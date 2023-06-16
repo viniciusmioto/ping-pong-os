@@ -31,6 +31,9 @@
 #define USER 0
 #define SYSTEM 1
 
+// temporizador ----------
+#define QUANTUM 20 // quantum em milisegundos
+
 // Estrutura que define um Task Control Block (TCB)
 typedef struct task_t {
     struct task_t *prev, *next;  // ponteiros para usar em filas
@@ -50,11 +53,13 @@ typedef struct task_t {
 } task_t;
 
 // estrutura que define um semáforo
-typedef struct
+typedef struct semaphore_t
 {
-    int count;
-    task_t *queue;
-} semaphore_t;
+    int count;                        // quantidade de tarefas na fila
+    int exists;                    // indica se o semáforo foi destruído
+
+    task_t *queue;                    // fila de tarefas esperando no semáforo
+} semaphore_t ;
 
 // estrutura que define um mutex
 typedef struct
@@ -70,16 +75,20 @@ typedef struct
 
 typedef struct mitem_t
 {
-  struct mitem_t *prev, *next ;
+  struct mitem_t *prev, *next ;		// ponteiros para usar em filas
   void *msg ;
 } mitem_t ;
 
 // estrutura que define uma fila de mensagens
 typedef struct mqueue_t
 {
+  // struct mqueue_t *prev, *next ;		// ponteiros para usar em filas
+  // int capacidade ;
   int msg_size ;
+  // void *msg ;
   semaphore_t *s_spot, *s_itens, *s_box ;
-  mitem_t *itens_queue ; 
+  mitem_t *fila ; 
+  // preencher quando necessário
 } mqueue_t ;
 
 #endif

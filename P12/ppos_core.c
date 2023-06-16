@@ -9,9 +9,6 @@ task_t dispatcher;      // tarefa dispatcher
 task_t *ready_tasks;    // fila de tarefas prontas
 task_t *sleeping_tasks; // fila de tarefas adormecidas
 
-// temporizador ----------
-#define QUANTUM 20 // quantum em milisegundos
-
 struct sigaction action;        // tratador de sinal
 struct itimerval timer;         // inicialização do timer
 unsigned int quantum_ticks = 0; // contador de ticks
@@ -404,10 +401,6 @@ int task_getprio(task_t *task) {
  * \param queue ponteiro para a fila de tarefas suspensas
  */
 void task_suspend(task_t **queue) {
-#ifdef DEBUG
-    printf("\033[1;31m ANTES DE SUSPENDER \033[0m\n");
-    print_task_queues();
-#endif
 
 #ifdef DEBUG
     printf("\033[0;36m task_suspend: ID %d \033[0m\n", current_task->id);
@@ -434,7 +427,6 @@ void task_suspend(task_t **queue) {
     }
 
 #ifdef DEBUG
-    printf("\033[1;31m DEPOIS DE SUSPENDER \033[0m\n");
     print_task_queues();
 #endif
 
@@ -522,6 +514,7 @@ int sem_init(semaphore_t *s, int value) {
         return -1;
     }
 
+    s->exists = 1;
     s->count = value;
     s->queue = NULL;
 
@@ -534,9 +527,10 @@ int sem_init(semaphore_t *s, int value) {
  * \return 0 se sucesso, < 0 se erro
  */
 int sem_down(semaphore_t *s) {
-
-    if (s == NULL) {
-        fprintf(stderr, "\033[0;35m ### ERROR sem_down: semaphore is null \033[0m\n");
+    if (s == NULL || !s->exists) {
+#ifdef DEBUG
+        fprintf(stderr, "\033[0;31m ### sem_down: semaphore is null \033[0m\n");
+#endif
         return -1;
     }
 
@@ -544,14 +538,12 @@ int sem_down(semaphore_t *s) {
     printf("\033[1;36m sem_down: task %d \033[0m\n", current_task->id);
 #endif
 
+    // seção crítica
     enter_cs(&lock);
-
     s->count--;
-    int count = s->count;
-
     leave_cs(&lock);
 
-    if (count < 0)
+    if (s->count < 0)
         task_suspend(&s->queue);
 
     return 0;
@@ -563,27 +555,24 @@ int sem_down(semaphore_t *s) {
  * \return 0 se sucesso, < 0 se erro
  */
 int sem_up(semaphore_t *s) {
-
-    if (s == NULL) {
-        fprintf(stderr, "\033[0;35m ### ERROR sem_up: semaphore is null \033[0m\n");
+    if (s == NULL || !s->exists) {
+#ifdef DEBUG
+        fprintf(stderr, "\033[0;31m ### sem_up: semaphore is null \033[0m\n");
+#endif
         return -1;
     }
-
-    if (s->queue == NULL)
-        return -1;
 
 #ifdef DEBUG
     printf("\033[1;36m sem_up: task %d \033[0m\n", current_task->id);
 #endif
 
     enter_cs(&lock);
-
     s->count++;
-
     leave_cs(&lock);
 
+    // se houver tarefas suspensas, acorda a primeira da fila
     if (s->count <= 0)
-        task_resume(s->queue, &s->queue);
+        task_resume((task_t *)s->queue, (task_t **)&s->queue);
 
     return 0;
 }
@@ -594,13 +583,18 @@ int sem_up(semaphore_t *s) {
  * \return 0 se sucesso, < 0 se erro
  */
 int sem_destroy(semaphore_t *s) {
-    if (s == NULL) {
-        fprintf(stderr, "\033[0;35m ### ERROR sem_destroy: semaphore is null \033[0m\n");
+    if (s == NULL || !s->exists) {
+#ifdef DEBUG
+        fprintf(stderr, "\033[0;31m ### sem_destroy: semaphore is null \033[0m\n");
+#endif
         return -1;
     }
 
-    while (sem_up(s) != -1)
-        ;
+    // remove as tarefas da fila de suspensas do semáforo
+    while (s->count <= 0)
+        sem_up(s);
+
+    s->exists = 0;
 
     return 0;
 }
@@ -613,13 +607,8 @@ int sem_destroy(semaphore_t *s) {
  * \return 0 se sucesso, < 0 se erro
  */
 int mqueue_init(mqueue_t *queue, int max_msgs, int msg_size) {
-    if (queue == NULL) {
-        fprintf(stderr, "\033[0;35m ### ERROR mqueue_init: queue is null \033[0m\n");
-        return -1;
-    }
-
     queue->msg_size = msg_size;
-    queue->itens_queue = NULL;
+    queue->fila = NULL;
 
     queue->s_spot = malloc(sizeof(semaphore_t));
     queue->s_itens = malloc(sizeof(semaphore_t));
@@ -634,7 +623,6 @@ int mqueue_init(mqueue_t *queue, int max_msgs, int msg_size) {
 
     return 0;
 }
-
 /*!
  * \brief Envia uma mensagem para a fila de mensagens
  * \param queue ponteiro para a fila de mensagens
@@ -657,7 +645,7 @@ int mqueue_send(mqueue_t *queue, void *msg) {
 
     memcpy(item->msg, msg, queue->msg_size);
 
-    if (queue_append((queue_t **)&queue->itens_queue, (queue_t *)item))
+    if (queue_append((queue_t **)&queue->fila, (queue_t *)item))
         return -1;
 
     if (sem_up(queue->s_box))
@@ -680,9 +668,9 @@ int mqueue_recv(mqueue_t *queue, void *msg) {
     if (sem_down(queue->s_box))
         return -1;
 
-    memcpy(msg, queue->itens_queue->msg, queue->msg_size);
+    memcpy(msg, queue->fila->msg, queue->msg_size);
 
-    if (queue_remove((queue_t **)&queue->itens_queue, (queue_t *)queue->itens_queue))
+    if (queue_remove((queue_t **)&queue->fila, (queue_t *)queue->fila))
         return -1;
 
     if (sem_up(queue->s_box))
@@ -700,12 +688,13 @@ int mqueue_recv(mqueue_t *queue, void *msg) {
  */
 int mqueue_destroy(mqueue_t *queue) {
     while (mqueue_msgs(queue) > 0) {
-        if (queue_remove((queue_t **)&queue->itens_queue, (queue_t *)queue->itens_queue))
+        if (queue_remove((queue_t **)&queue->fila, (queue_t *)queue->fila))
             return -1;
     }
 
+    // destroi os semáforos
     if (sem_destroy(queue->s_itens))
-        return -1; // tenta destruir sempre mais de uma vez, testar sem->existe
+        return -1;
     if (sem_destroy(queue->s_spot))
         return -1;
     if (sem_destroy(queue->s_box))
@@ -720,9 +709,9 @@ int mqueue_destroy(mqueue_t *queue) {
  * \return número de mensagens na fila de mensagens
  */
 int mqueue_msgs(mqueue_t *queue) {
-    int size = queue_size((queue_t *)queue->itens_queue);
+    int size = queue_size((queue_t *)queue->fila);
 
-    if (size == 1 && !(queue->itens_queue))
+    if (size == 1 && !(queue->fila))
         return 0;
 
     return size;
