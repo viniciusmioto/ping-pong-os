@@ -405,6 +405,11 @@ int task_getprio(task_t *task) {
  */
 void task_suspend(task_t **queue) {
 #ifdef DEBUG
+    printf("\033[1;31m ANTES DE SUSPENDER \033[0m\n");
+    print_task_queues();
+#endif
+
+#ifdef DEBUG
     printf("\033[0;36m task_suspend: ID %d \033[0m\n", current_task->id);
 #endif
 
@@ -429,6 +434,7 @@ void task_suspend(task_t **queue) {
     }
 
 #ifdef DEBUG
+    printf("\033[1;31m DEPOIS DE SUSPENDER \033[0m\n");
     print_task_queues();
 #endif
 
@@ -574,10 +580,10 @@ int sem_up(semaphore_t *s) {
 
     s->count++;
 
+    leave_cs(&lock);
+
     if (s->count <= 0)
         task_resume(s->queue, &s->queue);
-
-    leave_cs(&lock);
 
     return 0;
 }
@@ -603,9 +609,9 @@ int sem_destroy(semaphore_t *s) {
  * \brief Inicializa fila de mensagens
  * \param queue ponteiro para a fila de mensagens
  * \param max_msgs número máximo de mensagens
- * \param msg_size tamanho máximo de cada mensagem 
+ * \param msg_size tamanho máximo de cada mensagem
  * \return 0 se sucesso, < 0 se erro
-*/
+ */
 int mqueue_init(mqueue_t *queue, int max_msgs, int msg_size) {
     if (queue == NULL) {
         fprintf(stderr, "\033[0;35m ### ERROR mqueue_init: queue is null \033[0m\n");
@@ -634,7 +640,7 @@ int mqueue_init(mqueue_t *queue, int max_msgs, int msg_size) {
  * \param queue ponteiro para a fila de mensagens
  * \param msg ponteiro para a mensagem
  * \return 0 se sucesso, < 0 se erro
-*/
+ */
 int mqueue_send(mqueue_t *queue, void *msg) {
     if (sem_down(queue->s_spot))
         return -1;
@@ -667,7 +673,7 @@ int mqueue_send(mqueue_t *queue, void *msg) {
  * \param queue ponteiro para a fila de mensagens
  * \param msg ponteiro para a mensagem
  * \return 0 se sucesso, < 0 se erro
-*/
+ */
 int mqueue_recv(mqueue_t *queue, void *msg) {
     if (sem_down(queue->s_itens))
         return -1;
@@ -691,7 +697,7 @@ int mqueue_recv(mqueue_t *queue, void *msg) {
  * \brief Destrói uma fila de mensagens
  * \param queue ponteiro para a fila de mensagens
  * \return 0 se sucesso, < 0 se erro
-*/
+ */
 int mqueue_destroy(mqueue_t *queue) {
     while (mqueue_msgs(queue) > 0) {
         if (queue_remove((queue_t **)&queue->itens_queue, (queue_t *)queue->itens_queue))
@@ -712,7 +718,7 @@ int mqueue_destroy(mqueue_t *queue) {
  * \brief Retorna o número de mensagens na fila de mensagens
  * \param queue ponteiro para a fila de mensagens
  * \return número de mensagens na fila de mensagens
-*/
+ */
 int mqueue_msgs(mqueue_t *queue) {
     int size = queue_size((queue_t *)queue->itens_queue);
 
