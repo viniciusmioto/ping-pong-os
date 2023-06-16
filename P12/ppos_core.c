@@ -615,32 +615,19 @@ int sem_destroy(semaphore_t *s) {
  * \return 0 se sucesso, < 0 se erro
  */
 int mqueue_init(mqueue_t *queue, int max_msgs, int msg_size) {
-    queue->max_msgs = max_msgs;
-    queue->msg_size = msg_size;
-    queue->count_msgs = 0;
+    queue->msg_size   = msg_size;
+    queue->fila = NULL;
 
-    queue->queue = calloc(max_msgs, msg_size);
+    queue->vagas = malloc(sizeof(semaphore_t));
+    queue->itens = malloc(sizeof(semaphore_t));
+    queue->caixa = malloc(sizeof(semaphore_t));
 
-    // check if the queue was created successfully
-    if (!queue->queue) {
-        perror("mqueue_create: malloc");
-        exit(-1);
-    }
-
-    queue->start = 0;
-    queue->end = 0;
-
-    queue->s_item.count = 0;
-    queue->s_buffer.count = 1;
-    queue->s_vaga.count = max_msgs;
-
-    queue->s_item.queue = NULL;
-    queue->s_vaga.queue = NULL;
-    queue->s_buffer.queue = NULL;
+    if(sem_init(queue->vagas, max_msgs-1)) return -1;
+    if(sem_init(queue->itens, 0)) return -1;
+    if(sem_init(queue->caixa, 1)) return -1;
 
     return 0;
 }
-
 /*!
  * \brief Envia uma mensagem para a fila de mensagens
  * \param queue ponteiro para a fila de mensagens
@@ -648,29 +635,27 @@ int mqueue_init(mqueue_t *queue, int max_msgs, int msg_size) {
  * \return 0 se sucesso, < 0 se erro
  */
 int mqueue_send(mqueue_t *queue, void *msg) {
-    // check if the queue or the message is null
-    if (!queue || !msg)
+    if (sem_down(queue->vagas))
+        return -1;
+    if (sem_down(queue->caixa))
         return -1;
 
-    if (sem_down(&queue->s_vaga))
+    mitem_t *item = malloc(sizeof(mitem_t));
+    item->msg = malloc(queue->msg_size);
+
+    if (!item)
         return -1;
-    if (sem_down(&queue->s_buffer))
+    if (!(item->msg))
         return -1;
 
-    // get the position of the message in the queue
-    void *position = queue->queue + (queue->end * queue->msg_size);
+    memcpy(item->msg, msg, queue->msg_size);
 
-    // set the message from in the queue
-    memcpy(position, msg, queue->msg_size);
-
-    queue->count_msgs++;
-
-    // update the queue's end position
-    queue->end = (queue->end + 1) % queue->max_msgs;
-
-    if (sem_up(&queue->s_buffer))
+    if (queue_append((queue_t **)&queue->fila, (queue_t *)item))
         return -1;
-    if (sem_up(&queue->s_item))
+
+    if (sem_up(queue->caixa))
+        return -1;
+    if (sem_up(queue->itens))
         return -1;
 
     return 0;
@@ -683,29 +668,19 @@ int mqueue_send(mqueue_t *queue, void *msg) {
  * \return 0 se sucesso, < 0 se erro
  */
 int mqueue_recv(mqueue_t *queue, void *msg) {
-    // check if the queue or the message is null
-    if (!queue || !msg)
+    if (sem_down(queue->itens))
+        return -1;
+    if (sem_down(queue->caixa))
         return -1;
 
-    if (sem_down(&queue->s_item))
+    memcpy(msg, queue->fila->msg, queue->msg_size);
+
+    if (queue_remove((queue_t **)&queue->fila, (queue_t *)queue->fila))
         return -1;
-    if (sem_down(&queue->s_buffer))
+
+    if (sem_up(queue->caixa))
         return -1;
-
-    // get the position of the message in the queue
-    void *position = queue->queue + (queue->start * queue->msg_size);
-
-    // get the message from the queue
-    memcpy(msg, position, queue->msg_size);
-
-    queue->count_msgs--;
-
-    // update the queue's start position
-    queue->start = (queue->start + 1) % queue->max_msgs;
-
-    if (sem_up(&queue->s_buffer))
-        return -1;
-    if (sem_up(&queue->s_vaga))
+    if (sem_up(queue->vagas))
         return -1;
 
     return 0;
@@ -717,20 +692,16 @@ int mqueue_recv(mqueue_t *queue, void *msg) {
  * \return 0 se sucesso, < 0 se erro
  */
 int mqueue_destroy(mqueue_t *queue) {
-    // check if the queue is null
-    if (!queue)
-        return -1;
+    while (mqueue_msgs(queue) > 0) {
+        if (queue_remove((queue_t **)&queue->fila, (queue_t *)queue->fila))
+            return -1;
+    }
 
-    // remove all items in the queue
-    if (queue->queue)
-        free(queue->queue);
-
-    // wake up all tasks waiting in the semaphores
-    if (sem_destroy(&queue->s_item))
+    if (sem_destroy(queue->itens))
+        return -1; // tenta destruir sempre mais de uma vez, testar sem->existe
+    if (sem_destroy(queue->vagas))
         return -1;
-    if (sem_destroy(&queue->s_vaga))
-        return -1;
-    if (sem_destroy(&queue->s_buffer))
+    if (sem_destroy(queue->caixa))
         return -1;
 
     return 0;
@@ -742,9 +713,10 @@ int mqueue_destroy(mqueue_t *queue) {
  * \return número de mensagens na fila de mensagens
  */
 int mqueue_msgs(mqueue_t *queue) {
-    // check if the queue is null
-    if (!queue)
-        return -1;
+    int size = queue_size((queue_t *)queue->fila);
 
-    return queue->count_msgs;
+    if (size == 1 && !(queue->fila))
+        return 0;
+
+    return size;
 }

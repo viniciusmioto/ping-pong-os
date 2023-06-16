@@ -73,19 +73,22 @@ typedef struct
     // preencher quando necessário
 } barrier_t;
 
+typedef struct mitem_t
+{
+  struct mitem_t *prev, *next ;		// ponteiros para usar em filas
+  void *msg ;
+} mitem_t ;
+
+// estrutura que define uma fila de mensagens
 typedef struct mqueue_t
 {
-    int msg_size;                     // tamanho dos dados da mensagem
-    int max_msgs;                     // tamanho máximo da fila
-    int count_msgs;                   // número de mensagens na fila
-
-    void *queue;                      // fila de mensagens
-    int start;                        // índice do primeiro elemento da fila
-    int end;                          // índice do último elemento da fila
-
-    semaphore_t s_vaga;               // sinaliza a vaga da fila
-    semaphore_t s_item;               // sinaliza o item da fila
-    semaphore_t s_buffer;             // sinaliza o buffer da fila
+  // struct mqueue_t *prev, *next ;		// ponteiros para usar em filas
+  // int capacidade ;
+  int msg_size ;
+  // void *msg ;
+  semaphore_t *vagas, *itens, *caixa ;
+  mitem_t *fila ; 
+  // preencher quando necessário
 } mqueue_t ;
 
 #endif
