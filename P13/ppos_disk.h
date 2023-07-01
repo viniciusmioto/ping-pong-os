@@ -9,18 +9,12 @@
 
 #include "ppos_data.h"
 #include "disk.h"
+#include "ppos.h"
+#include <signal.h>
 
 // estruturas de dados e rotinas de inicializacao e acesso
 // a um dispositivo de entrada/saida orientado a blocos,
 // tipicamente um disco rigido.
-
-// estrutura que representa um disco no sistema operacional
-typedef struct disk_t {
-    semaphore_t access; // semaforo de acesso ao disco
-    struct disk_request_t *request_queue;
-    task_t *waiting_queue;
-    int signal;
-} disk_t;
 
 // estrutura que representa uma requisicao de operacao em disco
 typedef struct disk_request_t {
@@ -29,8 +23,17 @@ typedef struct disk_request_t {
     task_t *task;
     int operation;
     int block;
+    int id;
     void *buffer;
 } disk_request_t;
+
+// estrutura que representa um disco no sistema operacional
+typedef struct disk_t {
+    semaphore_t access; // semaforo de acesso ao disco
+    struct disk_request_t *request_queue;
+    task_t *waiting_queue;
+    int signal;
+} disk_t;
 
 /*!
  * \brief Inicializa o gerente de disco
