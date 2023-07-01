@@ -113,7 +113,10 @@ int disk_mgr_init(int *numBlocks, int *blockSize) {
     *numBlocks = disk_cmd(DISK_CMD_DISKSIZE, 0, 0);
     *blockSize = disk_cmd(DISK_CMD_BLOCKSIZE, 0, 0);
 
-    sem_init(&disk.access, 1);
+    if (sem_init(&disk.access, 1) < 0) {
+        fprintf(stderr, "\033[0;35m ### ERROR - disk_mgr_init: sem_init \033[0m \n");
+        return -1;
+    }
 
     // inicializa as estruturas internas do gerente
     disk.request_queue = NULL;
