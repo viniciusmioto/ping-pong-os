@@ -11,23 +11,23 @@
 #include <sys/time.h>
 
 // the task that will be the disk driver
-task_t diskDriverTask;
+task_t disk_driver_task;
 
 // the disk
 disk_t disk;
-task_t diskDriverTask;
+task_t disk_driver_task;
 
 // the action for the SIGUSR1 signal
 struct sigaction actionDisk;
 
 void suspend_disk_driver() {
     // suspend the disk driver task
-    diskDriverTask.status = SUSPENDED;
-    queue_remove((queue_t **)&ready_tasks, (queue_t *)&diskDriverTask);
-    queue_append((queue_t **)&sleeping_tasks, (queue_t *)&diskDriverTask);
+    disk_driver_task.status = SUSPENDED;
+    queue_remove((queue_t **)&ready_tasks, (queue_t *)&disk_driver_task);
+    queue_append((queue_t **)&sleeping_tasks, (queue_t *)&disk_driver_task);
 }
 
-void diskDriverBody(void *args) {
+void disk_drive_body(void *args) {
     disk_request_t *request;
 
     while (true) {
@@ -52,16 +52,21 @@ void diskDriverBody(void *args) {
         if (disk_status == DISK_STATUS_IDLE && disk.request_queue) {
             request = disk.request_queue;
 
-            disk_cmd(request->operation, request->block, request->buffer);
+            if (disk_cmd(request->operation, request->block, request->buffer) < 0) {
+#ifdef DEBUG
+                fprintf(stderr, "\033[0;35m ### ERROR - disk_driver_body: disk_cmd \033[0m \n");
+#endif
+            }
         }
 
         // if there is no request in the queue, then the disk is not idle
-        if (!disk.request_queue && !disk.waiting_queue) {
-            queue_remove((queue_t **)&ready_tasks, (queue_t *)&diskDriverTask);
+        if (disk.request_queue == NULL && disk.waiting_queue == NULL) {
+            suspend_disk_driver();
 
-            diskDriverTask.status = SUSPENDED;
+            if (ready_tasks == NULL)
+                queue_remove((queue_t **)&sleeping_tasks, (queue_t *)&disk_driver_task);
         } else
-            diskDriverTask.status = READY;
+            disk_driver_task.status = READY;
 
         sem_up(&disk.access);
 
@@ -70,11 +75,11 @@ void diskDriverBody(void *args) {
 }
 
 void signal_disk_handler() {
-    if (diskDriverTask.status == SUSPENDED) {
+    if (disk_driver_task.status == SUSPENDED) {
 #ifdef DEBUG
         printf("signal_disk_handler: task resume... \n");
 #endif
-        task_resume((task_t *)&diskDriverTask, (task_t **)&sleeping_tasks);
+        task_resume((task_t *)&disk_driver_task, (task_t **)&sleeping_tasks);
     }
 
     disk.signal = true;
@@ -102,11 +107,11 @@ int disk_mgr_init(int *numBlocks, int *blockSize) {
     disk.signal = false;
 
     // create a non user task
-    diskDriverTask.type = SYSTEM;
-    task_init(&diskDriverTask, diskDriverBody, NULL);
+    disk_driver_task.type = SYSTEM;
+    task_init(&disk_driver_task, disk_drive_body, NULL);
 
 #ifdef DEBUG
-    printf("disk_mgr_init: task with %d\n", diskDriverTask.id);
+    printf("disk_mgr_init: task with %d\n", disk_driver_task.id);
 #endif
 
     // suspend the disk driver task
@@ -160,12 +165,12 @@ int disk_block_read(int block, void *buffer) {
     disk_request_t *request = create_request(block, buffer, DISK_CMD_READ);
     queue_append((queue_t **)&disk.request_queue, (queue_t *)request);
 
-    if (diskDriverTask.status == SUSPENDED) {
+    if (disk_driver_task.status == SUSPENDED) {
 #ifdef DEBUG
         printf("disk_block_read: task resume... \n");
         print_task_queues();
 #endif
-        task_resume((task_t *)&diskDriverTask, (task_t **)&sleeping_tasks);
+        task_resume((task_t *)&disk_driver_task, (task_t **)&sleeping_tasks);
     }
 
     sem_up(&disk.access);
@@ -191,11 +196,11 @@ int disk_block_write(int block, void *buffer) {
     disk_request_t *request = create_request(block, buffer, DISK_CMD_WRITE);
     queue_append((queue_t **)&disk.request_queue, (queue_t *)request);
 
-    if (diskDriverTask.status == SUSPENDED) {
+    if (disk_driver_task.status == SUSPENDED) {
 #ifdef DEBUG
         printf("disk_block_write: task resume... \n");
 #endif
-        task_resume((task_t *)&diskDriverTask, (task_t **)&sleeping_tasks);
+        task_resume((task_t *)&disk_driver_task, (task_t **)&sleeping_tasks);
     }
 
     sem_up(&disk.access);
